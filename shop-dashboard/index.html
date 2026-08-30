@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Restock - Shop Dashboard</title>
+    <link rel="stylesheet" href="style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">📊</span>
+                <span class="logo-text">Restock Dashboard</span>
+            </div>
+            <div class="header-actions">
+                <!-- ✅ ADD LOGOUT BUTTON -->
+                 <button class="btn btn-outline" onclick="logout()">🚪 Logout</button>
+                 <button class="btn btn-outline" onclick="refreshData()">🔄 Refresh</button>
+                 <button class="btn btn-primary" onclick="goToShop()">🏪 Go to Shop</button>
+            </div>
+        </header>
+
+        <!-- Shop Selector -->
+        <section class="shop-selector">
+            <label for="shopSelect">👤 Select Your Shop:</label>
+            <select id="shopSelect" onchange="loadDashboard()">
+                <option value="">-- Select a shop --</option>
+            </select>
+        </section>
+
+        <!-- Date Filter -->
+        <section class="filter-section">
+            <div class="filter-group">
+                <label for="dateFilter">📅 Date Range:</label>
+                <select id="dateFilter" onchange="loadDashboard()">
+                    <option value="today">Today</option>
+                    <option value="week" selected>This Week</option>
+                    <option value="month">This Month</option>
+                    <option value="all">All Time</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="categoryFilter">📂 Category:</label>
+                <select id="categoryFilter" onchange="loadDashboard()">
+                    <option value="all">All Categories</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- Stats Cards -->
+        <section class="stats" id="statsContainer">
+            <div class="stat-card">
+                <p class="stat-label">📦 Total Orders</p>
+                <p class="stat-value" id="totalOrders">0</p>
+            </div>
+            <div class="stat-card">
+                <p class="stat-label">⏳ Pending</p>
+                <p class="stat-value" id="pendingOrders">0</p>
+            </div>
+            <div class="stat-card">
+                <p class="stat-label">✅ Delivered</p>
+                <p class="stat-value" id="deliveredOrders">0</p>
+            </div>
+            <div class="stat-card">
+                <p class="stat-label">💰 Total Spent</p>
+                <p class="stat-value" id="totalSpent">₦0</p>
+            </div>
+        </section>
+
+        <!-- Top Products -->
+        <section class="analytics-section">
+            <h2>🏆 Top Products</h2>
+            <div id="topProducts" class="top-products">
+                <div class="loading">Select a shop to see top products</div>
+            </div>
+        </section>
+
+        <!-- Order History -->
+        <section class="orders-section">
+            <div class="section-header">
+                <h2>📋 Order History</h2>
+                <button class="btn btn-outline btn-sm" onclick="exportCSV()">📥 Export CSV</button>
+            </div>
+            <div id="orderList">
+                <div class="loading">Select a shop to view orders</div>
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

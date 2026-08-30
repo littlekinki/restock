@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restock - Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">📊</span>
+                <span class="logo-text">Restock Admin</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active">
+                    <span class="nav-icon">📊</span> Dashboard
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">📦</span> Orders
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">🏪</span> Shops
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">📦</span> Distributors
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">🏍️</span> Riders
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">💰</span> Payments
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">⚙️</span> Settings
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="btn btn-outline" onclick="logout()">🚪 Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div>
+                    <h1>📊 Admin Dashboard</h1>
+                    <p class="subtitle">Overview of your Restock platform performance</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-outline" onclick="refreshData()">🔄 Refresh</button>
+                    <span id="lastUpdated" style="font-size: 12px; color: var(--gray-500);"></span>
+                </div>
+            </header>
+
+            <!-- Stats Cards -->
+            <section class="stats" id="statsContainer">
+                <div class="stat-card">
+                    <p class="stat-label">📦 Total Orders</p>
+                    <p class="stat-value" id="totalOrders">0</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-label">💰 Total Revenue</p>
+                    <p class="stat-value" id="totalRevenue">₦0</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-label">🏪 Active Shops</p>
+                    <p class="stat-value" id="activeShops">0</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-label">📦 Active Distributors</p>
+                    <p class="stat-value" id="activeDistributors">0</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-label">🏍️ Active Riders</p>
+                    <p class="stat-value" id="activeRiders">0</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-label">📊 Avg Order Value</p>
+                    <p class="stat-value" id="avgOrderValue">₦0</p>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="charts-section">
+                <div class="chart-container">
+                    <h3>📈 Orders Over Time</h3>
+                    <canvas id="ordersChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>📊 Revenue Over Time</h3>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Status Breakdown -->
+            <section class="status-section">
+                <div class="status-card">
+                    <h3>📋 Order Status Breakdown</h3>
+                    <div id="statusBreakdown">
+                        <div class="status-item">
+                            <span>🟡 Pending</span>
+                            <span id="pendingCount">0</span>
+                        </div>
+                        <div class="status-item">
+                            <span>🔵 Confirmed</span>
+                            <span id="confirmedCount">0</span>
+                        </div>
+                        <div class="status-item">
+                            <span>🟣 Picked Up</span>
+                            <span id="pickedUpCount">0</span>
+                        </div>
+                        <div class="status-item">
+                            <span>🟢 Delivered</span>
+                            <span id="deliveredCount">0</span>
+                        </div>
+                        <div class="status-item">
+                            <span>🔴 Cancelled</span>
+                            <span id="cancelledCount">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Products -->
+                <div class="status-card">
+                    <h3>🏆 Top Products</h3>
+                    <div id="topProducts">
+                        <p style="color: var(--gray-500); font-size: 14px;">Loading...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Orders -->
+            <section class="recent-orders">
+                <h3>📋 Recent Orders</h3>
+                <div id="recentOrdersList">
+                    <p style="color: var(--gray-500); font-size: 14px;">Loading...</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

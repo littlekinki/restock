@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restock - Distributor Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">📦</span>
+                <span class="logo-text">Restock</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active">
+                    <span class="nav-icon">📊</span> Dashboard
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">📋</span> New Orders
+                    <span class="badge" id="pendingBadge">0</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">📦</span> My Products
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">🚚</span> Deliveries
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">💰</span> Payments
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">📈</span> Reports
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">⚙️</span> Settings
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="distributor-info">
+                    <span class="avatar">BI</span>
+                    <div>
+                        <p class="name">Baba Ijebu Dist.</p>
+                        <p class="status">🟢 Online</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div>
+                    <h1>Dashboard</h1>
+                    <p class="subtitle">Manage your orders and deliveries</p>
+                </div>
+                <div class="header-actions">
+                    <!-- ✅ ADD LOGOUT BUTTON -->
+                     <button class="btn btn-outline" onclick="logout()">🚪 Logout</button>
+                     <button class="btn btn-outline" onclick="refreshOrders()">🔄 Refresh</button>
+                     <button class="btn btn-primary" onclick="addProduct()">+ Add Product</button>
+                </div>
+            </header>
+
+            <!-- Stats -->
+            <section class="stats" id="statsContainer">
+                <div class="stat-card">
+                    <p class="stat-label">Today's Orders</p>
+                    <p class="stat-value" id="todayOrders">0</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-label">Pending</p>
+                    <p class="stat-value" id="pendingOrders">0</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-label">Revenue Today</p>
+                    <p class="stat-value" id="todayRevenue">₦0</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-label">Active Shops</p>
+                    <p class="stat-value" id="activeShops">0</p>
+                </div>
+            </section>
+
+            <!-- Orders Section -->
+            <section class="orders-section">
+                <div class="section-header">
+                    <h2>Recent Orders</h2>
+                    <div class="filter-tabs">
+                        <button class="filter-tab active" data-filter="all" onclick="filterOrders('all')">All</button>
+                        <button class="filter-tab" data-filter="pending" onclick="filterOrders('pending')">Pending</button>
+                        <button class="filter-tab" data-filter="confirmed" onclick="filterOrders('confirmed')">Confirmed</button>
+                        <button class="filter-tab" data-filter="delivered" onclick="filterOrders('delivered')">Delivered</button>
+                    </div>
+                </div>
+                <div class="order-list" id="orderList">
+                    <div class="loading">Loading orders...</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Order Detail Modal -->
+    <div class="modal" id="orderModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Order Details</h2>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div id="orderDetail">
+                <div class="loading">Loading...</div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                <button class="btn btn-primary" id="confirmBtn" onclick="confirmOrder()">✅ Confirm & Prepare</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

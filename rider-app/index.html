@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restock - Rider App</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">🏍️</span>
+                <span class="logo-text">Restock Rider</span>
+            </div>
+            <div class="header-actions">
+                <span class="status-badge" id="statusBadge">🟢 Available</span>
+                <button class="btn btn-outline" onclick="toggleStatus()">Toggle Status</button>
+                <button class="btn btn-outline" onclick="refreshDeliveries()">🔄 Refresh</button>
+                <!-- ✅ ADD LOGOUT BUTTON -->
+                 <button class="btn btn-outline" onclick="logout()">🚪 Logout</button>
+            </div>
+        </header>
+
+        <!-- Rider Info -->
+        <section class="rider-info">
+            <div class="rider-selector">
+                <label for="riderSelect">👤 Select Rider:</label>
+                <select id="riderSelect" onchange="selectRider()">
+                    <option value="">-- Select a rider --</option>
+                </select>
+            </div>
+            <div id="riderDetails" class="rider-details" style="display:none;">
+                <p>📞 <span id="riderPhone">Phone</span></p>
+                <p>🚗 <span id="riderVehicle">Vehicle</span></p>
+                <p>💰 Earnings: <span id="riderEarnings">₦0</span></p>
+                <p>📦 Deliveries: <span id="riderDeliveries">0</span></p>
+            </div>
+        </section>
+
+        <!-- Stats -->
+        <section class="stats" id="statsContainer">
+            <div class="stat-card">
+                <p class="stat-label">Pending Deliveries</p>
+                <p class="stat-value" id="pendingDeliveries">0</p>
+            </div>
+            <div class="stat-card">
+                <p class="stat-label">Today's Earnings</p>
+                <p class="stat-value" id="todayEarnings">₦0</p>
+            </div>
+            <div class="stat-card">
+                <p class="stat-label">Total Deliveries</p>
+                <p class="stat-value" id="totalDeliveries">0</p>
+            </div>
+        </section>
+
+        <!-- Deliveries Section -->
+        <section class="deliveries-section">
+            <div class="section-header">
+                <h2>📦 My Deliveries</h2>
+                <div class="filter-tabs">
+                    <button class="filter-tab active" data-filter="all" onclick="filterDeliveries('all')">All</button>
+                    <button class="filter-tab" data-filter="picked_up" onclick="filterDeliveries('picked_up')">To Deliver</button>
+                    <button class="filter-tab" data-filter="out_for_delivery" onclick="filterDeliveries('out_for_delivery')">In Transit</button>
+                    <button class="filter-tab" data-filter="delivered" onclick="filterDeliveries('delivered')">Delivered</button>
+                </div>
+            </div>
+            <div class="delivery-list" id="deliveryList">
+                <div class="loading">Select a rider to see deliveries</div>
+            </div>
+        </section>
+
+        <!-- Delivery Detail Modal -->
+        <div class="modal" id="deliveryModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>📦 Delivery Details</h2>
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+                </div>
+                <div id="deliveryDetail">
+                    <div class="loading">Loading...</div>
+                </div>
+
+                <div id="pinSection" style="display: none; margin: 16px 0;">
+            <p style="font-weight: 600; margin-bottom: 8px;">🔑 Enter Delivery PIN:</p>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="deliveryPinInput" maxlength="4" placeholder="Enter 4-digit PIN" style="flex: 1; padding: 10px; border: 2px solid var(--gray-300); border-radius: var(--radius); font-size: 18px; text-align: center; letter-spacing: 4px;" />
+                <button class="btn btn-success" onclick="verifyDeliveryPIN()">✅ Verify PIN</button>
+            </div>
+            <p id="pinError" style="color: var(--danger); font-size: 13px; margin-top: 8px; display: none;">Invalid PIN. Please try again.</p>
+        </div>
+
+
+                <div class="modal-actions">
+    <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+    <button class="btn btn-warning" id="pickupBtn" onclick="pickupDelivery()" style="display:none;">📦 Pick Up Order</button>
+    <button class="btn btn-success" id="deliverBtn" onclick="deliverOrder()" style="display:none;">✅ Mark as Delivered</button>
+</div>
+            </div>
+        </div>
+
+        <!-- Toast Container -->
+        <div id="toastContainer"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

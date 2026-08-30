@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Restock - Smart Ordering Platform</title>
+    <link rel="stylesheet" href="style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <span class="logo-icon">📦</span>
+                <span class="logo-text">Restock</span>
+            </div>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#contact">Contact</a>
+            </div>
+            <div class="nav-actions">
+                <button class="btn btn-outline" onclick="openLogin()">Log In</button>
+                <button class="btn btn-primary" onclick="openRegister()">Get Started</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1>
+                    The Smart Way to
+                    <span class="highlight">Restock</span>
+                    Your Shop
+                </h1>
+                <p>
+                    Connect with distributors, order products, and track deliveries
+                    — all in one platform. No more calling multiple suppliers.
+                </p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary btn-large" onclick="openRegister()">
+                        🚀 Get Started Free
+                    </button>
+                    <button class="btn btn-outline btn-large" onclick="openLogin()">
+                        🔑 Log In
+                    </button>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat">
+                        <span class="stat-number">50+</span>
+                        <span class="stat-label">Shops</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">15+</span>
+                        <span class="stat-label">Distributors</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">500+</span>
+                        <span class="stat-label">Orders</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-image">
+                <div class="hero-illustration">
+                    <div class="illustration-box">
+                        <span>📦</span>
+                        <span>🛒</span>
+                        <span>🚚</span>
+                    </div>
+                    <p>Order → Confirm → Deliver</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="features-container">
+            <h2>Everything You Need to Manage Orders</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🛍️</div>
+                    <h3>Easy Ordering</h3>
+                    <p>Search products, compare prices, and place orders in seconds.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Smart Dashboard</h3>
+                    <p>Track orders, view analytics, and manage your inventory.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🚚</div>
+                    <h3>Real-time Delivery</h3>
+                    <p>Track your deliveries in real-time with live rider updates.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3>WhatsApp Orders</h3>
+                    <p>Order directly via WhatsApp — no app download required.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <h3>Best Prices</h3>
+                    <p>Compare prices from multiple distributors and save money.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📈</div>
+                    <h3>Analytics</h3>
+                    <p>See your spending, top products, and order history at a glance.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="hiw-container">
+            <h2>How It Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <h4>Search Products</h4>
+                    <p>Find what you need from multiple distributors</p>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <h4>Compare & Order</h4>
+                    <p>Choose the best price and place your order</p>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <h4>Get Delivered</h4>
+                    <p>Track your delivery in real-time</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔑 Log In</h2>
+                <button class="modal-close" onclick="closeModal('loginModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="role-selector">
+                    <button class="role-btn active" onclick="selectRole('shop')">🏪 Shop Owner</button>
+                    <button class="role-btn" onclick="selectRole('distributor')">📦 Distributor</button>
+                    <button class="role-btn" onclick="selectRole('rider')">🚚 Rider</button>
+                </div>
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" id="loginPhone" placeholder="08012345678" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" placeholder="Enter your password" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">Log In</button>
+                </form>
+                <p class="form-footer">
+                    Don't have an account? <a href="#" onclick="openRegister()">Sign up</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div class="modal" id="registerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📝 Create Account</h2>
+                <button class="modal-close" onclick="closeModal('registerModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="role-selector">
+                    <button class="role-btn active" onclick="selectRole('shop')">🏪 Shop Owner</button>
+                    <button class="role-btn" onclick="selectRole('distributor')">📦 Distributor</button>
+                    <button class="role-btn" onclick="selectRole('rider')">🚚 Rider</button>
+                </div>
+                <form id="registerForm" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label>Business Name</label>
+                        <input type="text" id="registerBusiness" placeholder="Maryland Supermarket" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="registerName" placeholder="Chidi Okonkwo" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" id="registerPhone" placeholder="08012345678" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="registerPassword" placeholder="Create a password" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">Create Account</button>
+                </form>
+                <p class="form-footer">
+                    Already have an account? <a href="#" onclick="openLogin()">Log in</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-logo">
+                <span>📦 Restock</span>
+                <p>Smart ordering for shop owners</p>
+            </div>
+            <div class="footer-links">
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#contact">Contact</a>
+            </div>
+            <div class="footer-copy">
+                <p>© 2026 Restock. Built with ❤️ in Nigeria</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
