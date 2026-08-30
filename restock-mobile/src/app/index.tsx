@@ -9,10 +9,23 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+
+const COLORS = {
+  primary: '#01311F',       
+  primaryLight: '#4DBE18',   
+  primaryDark: '#002B1C',    
+  secondary: '#4DBE18',      
+  background: '#FAF8F6',     
+  white: '#FFFFFF',
+  gray: '#6C757D',
+  lightGray: '#E9ECEF',
+};
+
 const API_URL = 'https://restock-backend-zkrx.onrender.com/api';
 
 export default function LoginScreen() {
@@ -20,9 +33,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('shop');
   const [loading, setLoading] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Check if user is already logged in
   useEffect(() => {
     checkAuth();
   }, []);
@@ -31,21 +42,19 @@ export default function LoginScreen() {
     const token = await AsyncStorage.getItem('token');
     const user = await AsyncStorage.getItem('user');
     if (token && user) {
-      setIsLoggedIn(true);
-      // Navigate based on role
       const userData = JSON.parse(user);
       navigateToDashboard(userData.role);
     }
   };
 
   const navigateToDashboard = (role: string) => {
-   if (role === 'shop') {
-    router.replace('/shop');
-   } else if (role === 'distributor') {
-    router.replace('/distributor');
-   } else if (role === 'rider') {
-    router.replace('/rider');
-   }
+    if (role === 'shop') {
+      router.replace('/shop');
+    } else if (role === 'distributor') {
+      router.replace('/distributor');
+    } else if (role === 'rider') {
+      router.replace('/rider');
+    }
   };
 
   const handleLogin = async () => {
@@ -85,8 +94,14 @@ export default function LoginScreen() {
         style={styles.keyboardView}
       >
         <View style={styles.content}>
-          <Text style={styles.title}>📦 Restock</Text>
-          <Text style={styles.subtitle}>Welcome back!</Text>
+          {/* YOUR LOGO */}
+          <Image
+            source={require('../assets/images/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+
+          <Text style={styles.tagline}>WE RESTOCK, YOU FOCUS</Text>
 
           <View style={styles.roleContainer}>
             {['shop', 'distributor', 'rider'].map((r) => (
@@ -154,7 +169,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: COLORS.background,
   },
   keyboardView: {
     flex: 1,
@@ -164,22 +179,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
-  title: {
-    fontSize: 40,
-    fontWeight: '800',
-    color: '#6C5CE7',
-    textAlign: 'center',
+  logo: {
+    width: 200,
+    height: 80,
+    alignSelf: 'center',
     marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#6C757D',
+  tagline: {
+    fontSize: 12,
+    color: COLORS.gray,
     textAlign: 'center',
+    letterSpacing: 2,
     marginBottom: 32,
+    fontWeight: '600',
   },
   roleContainer: {
     flexDirection: 'row',
-    backgroundColor: '#E9ECEF',
+    backgroundColor: COLORS.lightGray,
     borderRadius: 12,
     padding: 4,
     marginBottom: 20,
@@ -191,7 +207,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   roleButtonActive: {
-    backgroundColor: 'white',
+    backgroundColor: COLORS.white,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -199,36 +215,36 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   roleText: {
-    color: '#6C757D',
+    color: COLORS.gray,
     fontWeight: '500',
   },
   roleTextActive: {
-    color: '#212529',
+    color: COLORS.secondary,
     fontWeight: '600',
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: COLORS.white,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#DEE2E6',
+    borderColor: COLORS.lightGray,
     fontSize: 16,
   },
   loginButton: {
-    backgroundColor: '#6C5CE7',
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
   },
   loginButtonText: {
-    color: 'white',
+    color: COLORS.white,
     fontWeight: '600',
     fontSize: 16,
   },
   registerLink: {
-    color: '#6C5CE7',
+    color: COLORS.primary,
     textAlign: 'center',
     marginTop: 16,
     fontWeight: '500',

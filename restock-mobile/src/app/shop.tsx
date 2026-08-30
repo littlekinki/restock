@@ -11,6 +11,17 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 
+const COLORS = {
+  primary: '#01311F',       
+  primaryLight: '#4DBE18',   
+  primaryDark: '#002B1C',    
+  secondary: '#4DBE18',      
+  background: '#FAF8F6',     
+  white: '#FFFFFF',
+  gray: '#6C757D',
+  lightGray: '#E9ECEF',
+};
+
 export default function ShopScreen() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
