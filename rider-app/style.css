@@ -506,3 +506,11 @@ body {
     background: #FDCB6E;
     opacity: 0.8;
 }
+
+/* Logo Styles */
+.logo-img {
+    height: 40px;
+    width: auto;
+    max-width: 150px;
+    object-fit: contain;
+}

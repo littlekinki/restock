@@ -56,14 +56,28 @@ body {
     gap: 12px;
 }
 
-.logo-icon {
-    font-size: 28px;
+/* ✅ NAVBAR LOGO */
+.logo-img {
+    height: 50px;
+    width: auto;
+    max-width: 200px;
+    object-fit: contain;
 }
 
-.logo-text {
-    font-size: 24px;
-    font-weight: 800;
-    color: var(--primary);
+/* ✅ HERO LOGO */
+.hero-logo {
+    height: 120px;
+    width: auto;
+    max-width: 400px;
+    object-fit: contain;
+}
+
+/* ✅ ILLUSTRATION BOX IMAGE */
+.illustration-box img {
+    height: 80px;
+    width: auto;
+    max-width: 300px;
+    object-fit: contain;
 }
 
 .nav-links {
@@ -210,6 +224,8 @@ body {
     display: flex;
     gap: 24px;
     margin-bottom: 16px;
+    justify-content: center;
+    align-items: center;
 }
 
 .hero-illustration p {

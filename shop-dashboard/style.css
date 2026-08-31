@@ -413,3 +413,11 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* Logo Styles */
+.logo-img {
+    height: 40px;
+    width: auto;
+    max-width: 150px;
+    object-fit: contain;
+}
