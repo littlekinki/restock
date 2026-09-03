@@ -1,11 +1,35 @@
 {
   "rewrites": [
     {
-      "source": "/:path*/",
-      "destination": "/:path*/index.html"
+      "source": "/",
+      "destination": "/landing-page/index.html"
     },
     {
-      "source": "/:path*",
+      "source": "/landing-page",
+      "destination": "/landing-page/index.html"
+    },
+    {
+      "source": "/shop-app",
+      "destination": "/shop-app/index.html"
+    },
+    {
+      "source": "/distributor-dashboard",
+      "destination": "/distributor-dashboard/index.html"
+    },
+    {
+      "source": "/rider-app",
+      "destination": "/rider-app/index.html"
+    },
+    {
+      "source": "/shop-dashboard",
+      "destination": "/shop-dashboard/index.html"
+    },
+    {
+      "source": "/admin-dashboard",
+      "destination": "/admin-dashboard/index.html"
+    },
+    {
+      "source": "/:path*/",
       "destination": "/:path*/index.html"
     }
   ]
