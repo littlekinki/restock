@@ -32,5 +32,6 @@
       "source": "/:path*/",
       "destination": "/:path*/index.html"
     }
-  ]
+  ],
+  "cleanUrls": true
 }
