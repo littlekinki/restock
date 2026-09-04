@@ -542,3 +542,13 @@ body {
         justify-content: center;
     }
 }
+.footer-address {
+    text-align: center;
+    color: var(--gray-500);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.footer-address strong {
+    color: white;
+}
