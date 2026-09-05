@@ -15,11 +15,12 @@ const distributorSchema = new mongoose.Schema({
     lng: { type: Number, default: 0 }      // ← For finding nearby riders
   },
   products: [{
-    name: String,
-    category: String,
-    price: Number,
-    unit: String,
-    stock: Number
+    name: { type: String, required: true },
+    category: { type: String },
+    price: { type: Number, required: true },
+    unit: { type: String, enum: ['kg', 'g', 'carton', 'pack', 'piece', 'litre', 'ml'], default: 'piece' },
+    size: { type: String },
+    stock: { type: Number, default: 0 }
   }],
   deliveryRadius: { type: Number, default: 10 }, // km radius they deliver to
   deliveryFee: { type: Number, default: 0 },

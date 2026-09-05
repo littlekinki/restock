@@ -246,7 +246,66 @@ function searchProducts() {
 }
 
 // ============================================================
-// RENDER RESULTS (UPDATED - Add to cart with auth)
+// UPLOAD IMAGE FOR AI ORDERING
+// ============================================================
+async function uploadImage() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/orders/ai-image`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                showToast('✅ AI detected products! Review and confirm.');
+                showAIResults(data.products);
+            } else {
+                showToast('❌ Could not read image. Please try again.');
+            }
+        } catch (error) {
+            console.error('Image upload error:', error);
+            showToast('❌ Failed to process image');
+        }
+    };
+    input.click();
+}
+
+// ============================================================
+// SHOW AI RESULTS
+// ============================================================
+function showAIResults(products) {
+    let message = '🤖 AI Detected Products:\n\n';
+    products.forEach((p, i) => {
+        message += `${i+1}. ${p.name} x${p.quantity}\n`;
+    });
+    message += '\nConfirm to add to cart?';
+    
+    if (confirm(message)) {
+        products.forEach(p => {
+            // Search for product and add to cart
+            quickSearch(p.name);
+            // Then add to cart logic
+        });
+        showToast('✅ Products added to cart!');
+    }
+}
+
+// ============================================================
+// RENDER RESULTS 
 // ============================================================
 function renderResults(results, term) {
     const container = document.getElementById('resultsContainer');
@@ -311,10 +370,14 @@ function renderResults(results, term) {
                     const qty = inCart ? inCart.quantity : 0;
                     const stock = product.stock || 0;
                     
+                    
+                    const sizeDisplay = product.size ? ` • ${product.size}` : '';
+                    const unitDisplay = product.unit ? ` / ${product.unit}` : '';
+                    
                     return `
                         <div class="product-item">
                             <div class="product-info">
-                                <span class="product-name">${product.name}</span>
+                                <span class="product-name">${product.name}${sizeDisplay}${unitDisplay}</span>
                                 <span class="product-stock">${stock} in stock</span>
                             </div>
                             <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">

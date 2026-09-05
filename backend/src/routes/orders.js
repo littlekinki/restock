@@ -7,6 +7,7 @@ const Distributor = require('../models/Distributor');
 const Rider = require('../models/Rider');
 const mongoose = require('mongoose');
 const smsService = require('../services/smsService');
+const callService = require('../services/callService');
 
 // ============================================================
 // CREATE ORDER - POST /api/orders
@@ -71,6 +72,26 @@ router.post('/', auth, async (req, res) => {
         } catch (smsError) {
             console.error('⚠️ SMS notification failed:', smsError.message);
         }
+
+        // ============================================================
+        // ✅ SCHEDULE AUTO-CALL TO DISTRIBUTOR (AFTER 5 MINUTES)
+        // ============================================================
+        setTimeout(async () => {
+            try {
+                // Fetch the order with distributor details
+                const freshOrder = await Order.findById(order._id).populate('distributorId');
+                if (freshOrder && freshOrder.status === 'pending' && freshOrder.distributorId) {
+                    const orderIdDisplay = freshOrder._id.slice(-6).toUpperCase();
+                    console.log(`📞 Auto-call scheduled for order ${orderIdDisplay} to ${freshOrder.distributorId.phone}`);
+                    await callService.autoCallDistributor(
+                        freshOrder.distributorId.phone,
+                        orderIdDisplay
+                    );
+                }
+            } catch (callError) {
+                console.error('⚠️ Auto-call failed:', callError.message);
+            }
+        }, 300000); 
 
         res.status(201).json({
             success: true,
