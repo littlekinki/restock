@@ -8,7 +8,7 @@ async function testSMS() {
     
     
     const phone = '09152565045'; 
-    const message = '🧪 Restock test SMS! Your platform is working!';
+    const message = 'Dear Customer, your order #TEST123 has been confirmed! Total: NGN 43,400. Delivery in progress. - Powered by Restock';
 
     const result = await smsService.sendSMS(phone, message);
     console.log('📥 Result:', JSON.stringify(result, null, 2));

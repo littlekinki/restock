@@ -1,14 +1,11 @@
 const axios = require('axios');
 
 // ============================================================
-// SEND SMS VIA TERMII 
+// SEND SMS VIA TERMII
 // ============================================================
 async function sendSMS(phone, message) {
     try {
-        // Remove any special characters from phone
         const cleanPhone = phone.replace(/\D/g, '').trim();
-        
-        // Ensure Nigerian format (remove leading 0 if present)
         let formattedPhone = cleanPhone;
         if (formattedPhone.startsWith('0')) {
             formattedPhone = '234' + formattedPhone.substring(1);
@@ -18,64 +15,56 @@ async function sendSMS(phone, message) {
         }
 
         const apiKey = process.env.TERMII_API_KEY;
-        const senderId = process.env.TERMII_SENDER_ID || 'Restock';
-
-        console.log('📤 Sending SMS to:', formattedPhone);
-        console.log('📤 Message:', message);
-        console.log('🔑 API Key (first 10 chars):', apiKey ? apiKey.substring(0, 10) + '...' : '❌ No');
 
         
         const payload = {
             to: formattedPhone,
-            from: senderId,
+            from: 'OE Alert',     
             sms: message,
             type: 'plain',
-            channel: 'generic'
+            channel: 'dnd'         
         };
 
-        console.log('📦 Payload:', JSON.stringify(payload, null, 2));
+        console.log('📤 Sending SMS to:', formattedPhone);
+        console.log('📤 Message:', message);
 
-        const response = await axios({
-            method: 'post',
-            url: 'https://api.termii.com/api/sms/send',
-            headers: {
-                'Content-Type': 'application/json',
-                'api-key': apiKey  // ← Termii uses 'api-key' header
-            },
-            data: payload
-        });
+        const response = await axios.post(
+            'https://api.termii.com/api/sms/send',
+            payload,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'api-key': apiKey
+                }
+            }
+        );
 
         console.log('✅ SMS sent:', response.data);
         return response.data;
 
     } catch (error) {
         console.error('❌ SMS error:', error.response?.data || error.message);
-        if (error.response) {
-            console.error('📡 Status:', error.response.status);
-            console.error('📡 Headers:', error.response.headers);
-        }
         return { success: false, error: error.message };
     }
 }
 
 // ============================================================
-// ORDER STATUS MESSAGES
+// ORDER STATUS MESSAGES 
 // ============================================================
 function getOrderStatusMessage(order, status) {
-    const shopName = order.shopId?.businessName || 'Your shop';
     const orderId = `#${order._id.slice(-6).toUpperCase()}`;
-    const total = `₦${order.total?.toLocaleString() || 0}`;
+    const total = `NGN ${order.total?.toLocaleString() || 0}`;
 
     const messages = {
-        pending: `📦 ${shopName}, your order ${orderId} has been placed! Total: ${total}. We'll notify you when it's confirmed.`,
-        confirmed: `✅ ${shopName}, your order ${orderId} has been confirmed by the distributor! Total: ${total}. Preparing for delivery.`,
-        picked_up: `🚚 ${shopName}, your order ${orderId} has been picked up by a rider! Delivery in progress.`,
-        out_for_delivery: `🚚 ${shopName}, your order ${orderId} is out for delivery! Expect it soon.`,
-        delivered: `✅ ${shopName}, your order ${orderId} has been delivered! Thank you for using Restock. Please rate your experience.`,
-        cancelled: `❌ ${shopName}, your order ${orderId} has been cancelled. Please contact support for assistance.`
+        pending: `Dear Customer, your order ${orderId} has been placed! Total: ${total}. We'll notify you when confirmed. - Powered by Restock`,
+        confirmed: `Dear Customer, your order ${orderId} has been confirmed! Total: ${total}. Delivery in progress. - Powered by Restock`,
+        picked_up: `Dear Customer, your order ${orderId} has been picked up! Total: ${total}. Delivery in progress. - Powered by Restock`,
+        out_for_delivery: `Dear Customer, your order ${orderId} is out for delivery! Expect it soon. - Powered by Restock`,
+        delivered: `Dear Customer, your order ${orderId} has been delivered! Thank you for using Restock. - Powered by Restock`,
+        cancelled: `Dear Customer, your order ${orderId} has been cancelled. Please contact support. - Powered by Restock`
     };
 
-    return messages[status] || `📦 ${shopName}, your order ${orderId} status: ${status.toUpperCase()}`;
+    return messages[status] || `Dear Customer, your order ${orderId} status: ${status.toUpperCase()}. - Powered by Restock`;
 }
 
 // ============================================================
