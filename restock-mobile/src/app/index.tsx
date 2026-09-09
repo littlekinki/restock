@@ -46,7 +46,7 @@ export default function LoginScreen() {
       navigateToDashboard(userData.role);
     }
   };
-
+  
   const navigateToDashboard = (role: string) => {
     if (role === 'shop') {
       router.replace('/shop');
@@ -54,6 +54,8 @@ export default function LoginScreen() {
       router.replace('/distributor');
     } else if (role === 'rider') {
       router.replace('/rider');
+    } else if (role === 'admin') {
+      router.replace('/admin');
     }
   };
 
@@ -152,10 +154,9 @@ export default function LoginScreen() {
               <Text style={styles.loginButtonText}>Log In</Text>
             )}
           </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => Alert.alert('Coming Soon', 'Registration will be available soon!')}
-          >
+          
+          
+          <TouchableOpacity onPress={() => router.push('/register')}>
             <Text style={styles.registerLink}>
               Don't have an account? Sign up
             </Text>

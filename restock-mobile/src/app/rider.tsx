@@ -6,26 +6,25 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
+  RefreshControl,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 
-const COLORS = {
-  primary: '#01311F',        
-  primaryLight: '#4DBE18',   
-  primaryDark: '#002B1C',    
-  secondary: '#4DBE18',      
-  background: '#FAF8F6',     
-  white: '#FFFFFF',
-  gray: '#6C757D',
-  lightGray: '#E9ECEF',
-};
+const API_URL = 'https://restock-backend-zkrx.onrender.com/api';
 
 export default function RiderScreen() {
   const [user, setUser] = useState(null);
+  const [deliveries, setDeliveries] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [stats, setStats] = useState({ total: 0, pending: 0, completed: 0 });
 
   useEffect(() => {
     loadUser();
+    loadDeliveries();
   }, []);
 
   const loadUser = async () => {
@@ -35,11 +34,52 @@ export default function RiderScreen() {
     }
   };
 
+  const loadDeliveries = async () => {
+    setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/orders?riderId=${user?.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setDeliveries(data.orders || []);
+        const total = data.orders.length;
+        const pending = data.orders.filter(o => o.status === 'picked_up' || o.status === 'out_for_delivery').length;
+        const completed = data.orders.filter(o => o.status === 'delivered').length;
+        setStats({ total, pending, completed });
+      }
+    } catch (error) {
+      console.error('Error loading deliveries:', error);
+      Alert.alert('Error', 'Failed to load deliveries');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
   const handleLogout = async () => {
     await AsyncStorage.removeItem('token');
     await AsyncStorage.removeItem('user');
     router.replace('/');
   };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadDeliveries();
+  };
+
+  const handleRoute = () => {
+    Alert.alert(
+      '📍 Route',
+      'Here are your deliveries for today:\n\n' +
+      deliveries.map((d, i) => 
+        `${i+1}. Order #${d._id.slice(-6).toUpperCase()} - ${d.status?.toUpperCase()}`
+    ).join('\n') ||
+    'No deliveries assigned today.'
+  );
+};
 
   return (
     <SafeAreaView style={styles.container}>
@@ -50,58 +90,107 @@ export default function RiderScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         <Text style={styles.title}>🏍️ Rider Dashboard</Text>
         <Text style={styles.subtitle}>Manage your deliveries.</Text>
 
+        {/* Stats Cards */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{stats.total}</Text>
+            <Text style={styles.statLabel}>Total Deliveries</Text>
+          </View>
+          <View style={[styles.statCard, styles.pendingCard]}>
+            <Text style={styles.statNumber}>{stats.pending}</Text>
+            <Text style={styles.statLabel}>In Progress</Text>
+          </View>
+          <View style={[styles.statCard, styles.completedCard]}>
+            <Text style={styles.statNumber}>{stats.completed}</Text>
+            <Text style={styles.statLabel}>Completed</Text>
+          </View>
+        </View>
+
+        {/* Quick Actions Grid */}
         <View style={styles.grid}>
-          <TouchableOpacity style={styles.card}>
+          <TouchableOpacity style={styles.card} onPress={() => Alert.alert('My Deliveries', `You have ${stats.pending} deliveries in progress`)}>
             <Text style={styles.cardIcon}>📦</Text>
             <Text style={styles.cardTitle}>My Deliveries</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.card}>
+          <TouchableOpacity style={styles.card} onPress={() => Alert.alert('Route', 'Route optimization coming soon!')}>
             <Text style={styles.cardIcon}>📍</Text>
             <Text style={styles.cardTitle}>Route</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.card}>
+          <TouchableOpacity style={styles.card} onPress={() => Alert.alert('Earnings', `Total earnings: ₦${user?.earnings?.toLocaleString() || 0}`)}>
             <Text style={styles.cardIcon}>💰</Text>
             <Text style={styles.cardTitle}>Earnings</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.card}>
+          <TouchableOpacity style={styles.card} onPress={handleRoute}>
             <Text style={styles.cardIcon}>⭐</Text>
             <Text style={styles.cardTitle}>Ratings</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Today's Deliveries */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📦 Today's Deliveries</Text>
-          <Text style={styles.emptyText}>No deliveries assigned.</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#01311F" style={styles.loader} />
+          ) : deliveries.length === 0 ? (
+            <Text style={styles.emptyText}>No deliveries assigned.</Text>
+          ) : (
+            deliveries.slice(0, 5).map((delivery, index) => (
+              <View key={index} style={styles.deliveryItem}>
+                <Text style={styles.deliveryId}>#{delivery._id.slice(-6).toUpperCase()}</Text>
+                <Text style={styles.deliveryStatus}>{delivery.status?.toUpperCase()}</Text>
+                <Text style={styles.deliveryTotal}>₦{delivery.total?.toLocaleString()}</Text>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+const COLORS = {
+  primary: '#01311F',
+  primaryDark: '#002B1C',
+  secondary: '#4DBE18',
+  background: '#FAF8F6',
+  white: '#FFFFFF',
+  gray: '#6C757D',
+  lightGray: '#E9ECEF',
+  pending: '#E65100',
+  completed: '#1B5E20',
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E9ECEF',
+    borderBottomColor: COLORS.lightGray,
   },
   welcome: {
     fontSize: 18,
     fontWeight: '700',
+    color: COLORS.primary,
   },
   logoutButton: {
     padding: 8,
@@ -119,13 +208,50 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#6C5CE7',
+    color: COLORS.primary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6C757D',
+    color: COLORS.gray,
     marginBottom: 24,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: '30%',
+    backgroundColor: COLORS.white,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  pendingCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.pending,
+  },
+  completedCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.completed,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginTop: 4,
   },
   grid: {
     flexDirection: 'row',
@@ -136,7 +262,7 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: 'white',
+    backgroundColor: COLORS.white,
     padding: 20,
     borderRadius: 12,
     alignItems: 'center',
@@ -153,10 +279,10 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#212529',
+    color: COLORS.primary,
   },
   section: {
-    backgroundColor: 'white',
+    backgroundColor: COLORS.white,
     padding: 16,
     borderRadius: 12,
     shadowColor: '#000',
@@ -169,9 +295,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
+    color: COLORS.primary,
+  },
+  loader: {
+    marginVertical: 20,
+  },
+  deliveryItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.lightGray,
+  },
+  deliveryId: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deliveryStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    backgroundColor: COLORS.lightGray,
+  },
+  deliveryTotal: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
   emptyText: {
-    color: '#6C757D',
+    color: COLORS.gray,
     textAlign: 'center',
     padding: 20,
   },
