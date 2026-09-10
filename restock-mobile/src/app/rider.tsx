@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import * as Location from 'expo-location';
 
 const API_URL = 'https://restock-backend-zkrx.onrender.com/api';
 
@@ -25,6 +26,7 @@ export default function RiderScreen() {
   useEffect(() => {
     loadUser();
     loadDeliveries();
+    startLocationUpdates();
   }, []);
 
   const loadUser = async () => {
@@ -76,10 +78,59 @@ export default function RiderScreen() {
       'Here are your deliveries for today:\n\n' +
       deliveries.map((d, i) => 
         `${i+1}. Order #${d._id.slice(-6).toUpperCase()} - ${d.status?.toUpperCase()}`
-    ).join('\n') ||
-    'No deliveries assigned today.'
-  );
-};
+      ).join('\n') ||
+      'No deliveries assigned today.'
+    );
+  };
+
+  const showDeliveryDetails = (delivery) => {
+    const deliveryAddress = delivery.shopId?.address;
+    const pickupAddress = delivery.distributorId?.address;
+    
+    Alert.alert(
+      '📍 Delivery Details',
+      `📦 Order #${delivery._id.slice(-6).toUpperCase()}\n\n` +
+      `📥 Pickup from:\n${pickupAddress?.street || 'N/A'}\n${pickupAddress?.city || ''} ${pickupAddress?.state || ''}\n\n` +
+      `📦 Deliver to:\n${deliveryAddress?.street || 'N/A'}\n${deliveryAddress?.city || ''} ${deliveryAddress?.state || ''}\n\n` +
+      `💰 Total: ₦${delivery.total?.toLocaleString()}\n` +
+      `📊 Status: ${delivery.status?.toUpperCase()}`
+    );
+  };
+
+  const updateLocation = async () => {
+    try {
+      const location = await Location.getCurrentPositionAsync({});
+      const token = await AsyncStorage.getItem('token');
+      
+      await fetch(`${API_URL}/riders/${user?.id}/location`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lat: location.coords.latitude,
+          lng: location.coords.longitude,
+        }),
+      });
+      console.log('📍 Location updated');
+    } catch (error) {
+      console.error('Error updating location:', error);
+    }
+  };
+
+  // startLocationUpdates FUNCTION
+  const startLocationUpdates = () => {
+  
+    const interval = setInterval(() => {
+      if (user?.id) {
+        updateLocation();
+      }
+    }, 10000); // 10 seconds
+
+    // Clean up interval when component unmounts
+    return () => clearInterval(interval);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -123,7 +174,7 @@ export default function RiderScreen() {
             <Text style={styles.cardTitle}>My Deliveries</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.card} onPress={() => Alert.alert('Route', 'Route optimization coming soon!')}>
+          <TouchableOpacity style={styles.card} onPress={handleRoute}>
             <Text style={styles.cardIcon}>📍</Text>
             <Text style={styles.cardTitle}>Route</Text>
           </TouchableOpacity>
@@ -133,7 +184,7 @@ export default function RiderScreen() {
             <Text style={styles.cardTitle}>Earnings</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.card} onPress={handleRoute}>
+          <TouchableOpacity style={styles.card} onPress={() => Alert.alert('Ratings', 'Ratings coming soon!')}>
             <Text style={styles.cardIcon}>⭐</Text>
             <Text style={styles.cardTitle}>Ratings</Text>
           </TouchableOpacity>
@@ -147,13 +198,29 @@ export default function RiderScreen() {
           ) : deliveries.length === 0 ? (
             <Text style={styles.emptyText}>No deliveries assigned.</Text>
           ) : (
-            deliveries.slice(0, 5).map((delivery, index) => (
-              <View key={index} style={styles.deliveryItem}>
-                <Text style={styles.deliveryId}>#{delivery._id.slice(-6).toUpperCase()}</Text>
-                <Text style={styles.deliveryStatus}>{delivery.status?.toUpperCase()}</Text>
-                <Text style={styles.deliveryTotal}>₦{delivery.total?.toLocaleString()}</Text>
-              </View>
-            ))
+            deliveries.slice(0, 5).map((delivery, index) => {
+              const deliveryAddress = delivery.shopId?.address;
+              const pickupAddress = delivery.distributorId?.address;
+              
+              return (
+                <TouchableOpacity 
+                  key={index} 
+                  style={styles.deliveryItem}
+                  onPress={() => showDeliveryDetails(delivery)}
+                >
+                  <View>
+                    <Text style={styles.deliveryId}>#{delivery._id.slice(-6).toUpperCase()}</Text>
+                    <Text style={styles.deliveryAddress}>
+                      📍 {deliveryAddress?.city || 'Unknown'} → {pickupAddress?.city || 'Unknown'}
+                    </Text>
+                  </View>
+                  <View style={styles.deliveryRight}>
+                    <Text style={styles.deliveryStatus}>{delivery.status?.toUpperCase()}</Text>
+                    <Text style={styles.deliveryTotal}>₦{delivery.total?.toLocaleString()}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
           )}
         </View>
       </ScrollView>
@@ -311,6 +378,15 @@ const styles = StyleSheet.create({
   deliveryId: {
     fontSize: 14,
     fontWeight: '600',
+    color: COLORS.primary,
+  },
+  deliveryAddress: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginTop: 2,
+  },
+  deliveryRight: {
+    alignItems: 'flex-end',
   },
   deliveryStatus: {
     fontSize: 12,
@@ -319,6 +395,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 4,
     backgroundColor: COLORS.lightGray,
+    marginBottom: 4,
   },
   deliveryTotal: {
     fontSize: 14,

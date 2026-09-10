@@ -23,6 +23,10 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // ← NEW
 
   const handleRegister = async () => {
     if (!businessName || !ownerName || !phone || !password) {
@@ -41,6 +45,11 @@ export default function RegisterScreen() {
           ownerName,
           phone,
           password,
+          address: {
+            street: address,
+            city: city,
+            state: state
+          }
         }),
       });
 
@@ -119,11 +128,43 @@ export default function RegisterScreen() {
 
             <TextInput
               style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
+              placeholder="Shop Address (Street, Landmark)"
+              value={address}
+              onChangeText={setAddress}
             />
+
+            <TextInput
+              style={styles.input}
+              placeholder="City"
+              value={city}
+              onChangeText={setCity}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="State"
+              value={state}
+              onChangeText={setState}
+            />
+
+            {/* ✅ PASSWORD WITH SHOW/HIDE */}
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity 
+                style={styles.eyeButton} 
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Text style={styles.eyeIcon}>
+                  {showPassword ? '👁️' : '🙈'}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
               style={styles.registerButton}
@@ -225,6 +266,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.lightGray,
     fontSize: 16,
+  },
+  // ✅ NEW STYLES FOR PASSWORD
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.lightGray,
+    marginBottom: 16,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 16,
+    fontSize: 16,
+  },
+  eyeButton: {
+    padding: 16,
+  },
+  eyeIcon: {
+    fontSize: 20,
   },
   registerButton: {
     backgroundColor: COLORS.primary,

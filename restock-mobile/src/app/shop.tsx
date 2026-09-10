@@ -20,12 +20,14 @@ export default function ShopScreen() {
   const [user, setUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadUser();
     loadProducts();
+    loadOrders();
   }, []);
 
   const loadUser = async () => {
@@ -45,7 +47,6 @@ export default function ShopScreen() {
       const data = await response.json();
       
       if (data.success) {
-        // Extract all products from distributors
         let allProducts = [];
         data.distributors.forEach(dist => {
           if (dist.products) {
@@ -64,7 +65,25 @@ export default function ShopScreen() {
       console.error('Error loading products:', error);
     } finally {
       setLoading(false);
-      setRefreshing(false);
+    }
+  };
+
+  const loadOrders = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const user = JSON.parse(userData);
+      
+      const response = await fetch(`${API_URL}/orders?shopId=${user?.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setOrders(data.orders || []);
+      }
+    } catch (error) {
+      console.error('Error loading orders:', error);
     }
   };
 
@@ -95,10 +114,6 @@ export default function ShopScreen() {
     Alert.alert('Coming Soon', 'Cart functionality will be available soon!');
   };
 
-  const handleOrders = () => {
-    Alert.alert('Coming Soon', 'Order history will be available soon!');
-  };
-
   const handleFavorites = () => {
     Alert.alert('Coming Soon', 'Favorites will be available soon!');
   };
@@ -106,6 +121,8 @@ export default function ShopScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     loadProducts();
+    loadOrders();
+    setRefreshing(false);
   };
 
   return (
@@ -153,7 +170,7 @@ export default function ShopScreen() {
             <Text style={styles.cardTitle}>My Cart</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.card} onPress={handleOrders}>
+          <TouchableOpacity style={styles.card} onPress={() => Alert.alert('Orders', `You have ${orders.length} total orders`)}>
             <Text style={styles.cardIcon}>📦</Text>
             <Text style={styles.cardTitle}>Orders</Text>
           </TouchableOpacity>
@@ -162,6 +179,45 @@ export default function ShopScreen() {
             <Text style={styles.cardIcon}>⭐</Text>
             <Text style={styles.cardTitle}>Favorites</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* ============================================================
+            📋 ORDERS SECTION WITH TRACK BUTTON
+            ============================================================ */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📋 Your Orders</Text>
+          {orders.length === 0 ? (
+            <Text style={styles.emptyText}>No orders yet. Start shopping!</Text>
+          ) : (
+            orders.slice(0, 5).map((order, index) => {
+              const deliveryAddress = order.deliveryAddress;
+              const pickupAddress = order.pickupAddress;
+              
+              return (
+                <View key={index} style={styles.orderItem}>
+                  <View>
+                    <Text style={styles.orderId}>#{order._id.slice(-6).toUpperCase()}</Text>
+                    <Text style={styles.orderStatus}>{order.status?.toUpperCase()}</Text>
+                    <Text style={styles.orderAddress}>
+                      📍 {deliveryAddress?.city || 'Unknown'}
+                      {pickupAddress?.distributorName ? ` | 📦 ${pickupAddress.distributorName}` : ''}
+                    </Text>
+                    <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
+                  </View>
+                  
+                  {/* ✅ TRACK BUTTON - Shows only when order is in delivery */}
+                  {(order.status === 'picked_up' || order.status === 'out_for_delivery') && (
+                    <TouchableOpacity 
+                      style={styles.trackButton}
+                      onPress={() => router.push(`/tracking?orderId=${order._id}`)}
+                    >
+                      <Text style={styles.trackButtonText}>📍 Track</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })
+          )}
         </View>
 
         {/* Products Section */}
@@ -330,6 +386,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.gray,
     marginTop: 2,
+  },
+  // ✅ ORDER STYLES
+  orderItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.lightGray,
+  },
+  orderId: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  orderStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+    color: COLORS.gray,
+  },
+  orderAddress: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginTop: 2,
+  },
+  orderTotal: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginTop: 2,
+  },
+  trackButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  trackButtonText: {
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: '600',
   },
   emptyText: {
     color: COLORS.gray,
