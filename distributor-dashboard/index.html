@@ -58,10 +58,9 @@
                     <p class="subtitle">Manage your orders and deliveries</p>
                 </div>
                 <div class="header-actions">
-                    <!-- ✅ ADD LOGOUT BUTTON -->
-                     <button class="btn btn-outline" onclick="logout()">🚪 Logout</button>
-                     <button class="btn btn-outline" onclick="refreshOrders()">🔄 Refresh</button>
-                     <button class="btn btn-primary" onclick="addProduct()">+ Add Product</button>
+                    <button class="btn btn-outline" onclick="logout()">🚪 Logout</button>
+                    <button class="btn btn-outline" onclick="refreshOrders()">🔄 Refresh</button>
+                    <button class="btn btn-primary" onclick="toggleAddProductForm()">+ Add Product</button>
                 </div>
             </header>
 
@@ -99,6 +98,62 @@
                 <div class="order-list" id="orderList">
                     <div class="loading">Loading orders...</div>
                 </div>
+            </section>
+
+            <!-- ✅ ADD PRODUCT SECTION - INSIDE MAIN CONTENT -->
+            <section class="add-product-section" id="addProductSection" style="display: none; margin-top: 32px; background: white; padding: 24px; border-radius: var(--radius); border: 1px solid var(--gray-200);">
+                <h2 style="margin-bottom: 16px;">➕ Add New Product</h2>
+                <form id="addProductForm" onsubmit="saveProduct(event)" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>Product Name *</label>
+                        <input type="text" id="productName" placeholder="e.g., Indomie Super Pack" required style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius);" />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="productCategory" style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius);">
+                            <option value="Noodles">Noodles</option>
+                            <option value="Beverages">Beverages</option>
+                            <option value="Food">Food</option>
+                            <option value="Snacks">Snacks</option>
+                            <option value="Detergents">Detergents</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Price (₦) *</label>
+                        <input type="number" id="productPrice" placeholder="e.g., 14200" required style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius);" />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Size/Unit</label>
+                        <select id="productUnit" style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius);">
+                            <option value="piece">Piece</option>
+                            <option value="kg">Kilogram (kg)</option>
+                            <option value="g">Gram (g)</option>
+                            <option value="carton">Carton</option>
+                            <option value="pack">Pack</option>
+                            <option value="litre">Litre</option>
+                            <option value="ml">Millilitre (ml)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Size Details</label>
+                        <input type="text" id="productSize" placeholder="e.g., 500g, 1kg, 12pcs" style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius);" />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Stock Quantity *</label>
+                        <input type="number" id="productStock" placeholder="e.g., 100" required style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius);" />
+                    </div>
+                    
+                    <div style="grid-column: span 2; display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px;">
+                        <button type="button" class="btn btn-secondary" onclick="toggleAddProductForm()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">✅ Add Product</button>
+                    </div>
+                </form>
             </section>
         </main>
     </div>

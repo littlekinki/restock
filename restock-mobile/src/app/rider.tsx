@@ -16,6 +16,12 @@ import * as Location from 'expo-location';
 
 const API_URL = 'https://restock-backend-zkrx.onrender.com/api';
 
+const BANK_DETAILS = {
+  bankName: process.env.EXPO_PUBLIC_BANK_NAME || 'Palmpay',
+  accountNumber: process.env.EXPO_PUBLIC_BANK_ACCOUNT || '7046835216',
+  accountName: process.env.EXPO_PUBLIC_BANK_ACCOUNT_NAME || 'Kingsley Mamah',
+};
+
 export default function RiderScreen() {
   const [user, setUser] = useState(null);
   const [deliveries, setDeliveries] = useState([]);
@@ -87,15 +93,22 @@ export default function RiderScreen() {
     const deliveryAddress = delivery.shopId?.address;
     const pickupAddress = delivery.distributorId?.address;
     
+    
     Alert.alert(
       '📍 Delivery Details',
       `📦 Order #${delivery._id.slice(-6).toUpperCase()}\n\n` +
       `📥 Pickup from:\n${pickupAddress?.street || 'N/A'}\n${pickupAddress?.city || ''} ${pickupAddress?.state || ''}\n\n` +
       `📦 Deliver to:\n${deliveryAddress?.street || 'N/A'}\n${deliveryAddress?.city || ''} ${deliveryAddress?.state || ''}\n\n` +
       `💰 Total: ₦${delivery.total?.toLocaleString()}\n` +
-      `📊 Status: ${delivery.status?.toUpperCase()}`
+      `📊 Status: ${delivery.status?.toUpperCase()}\n\n` +
+      `🏦 PAYMENT DETAILS\n` +
+      `Bank: ${BANK_DETAILS.bankName}\n` +
+      `Account: ${BANK_DETAILS.accountNumber}\n` +
+      `Name: ${BANK_DETAILS.accountName}\n\n` +
+      `Ask customer to transfer, then enter PIN.`,
+      [{ text: 'OK' }]
     );
-  };
+  }; 
 
   const updateLocation = async () => {
     try {

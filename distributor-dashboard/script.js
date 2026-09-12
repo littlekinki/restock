@@ -576,3 +576,84 @@ function logout() {
 console.log('✅ Distributor dashboard loaded!');
 loadDistributorFilter();
 fetchOrders();
+
+// ============================================================
+// TOGGLE ADD PRODUCT FORM
+// ============================================================
+function toggleAddProductForm() {
+    const section = document.getElementById('addProductSection');
+    if (section.style.display === 'none') {
+        section.style.display = 'block';
+        section.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        section.style.display = 'none';
+    }
+}
+
+// ============================================================
+// SAVE PRODUCT
+// ============================================================
+async function saveProduct(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('productName').value;
+    const category = document.getElementById('productCategory').value;
+    const price = parseFloat(document.getElementById('productPrice').value);
+    const unit = document.getElementById('productUnit').value;
+    const size = document.getElementById('productSize').value;
+    const stock = parseInt(document.getElementById('productStock').value);
+
+    if (!name || !price || !stock) {
+        showToast('⚠️ Please fill in all required fields');
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        // Get the current distributor
+        const distResponse = await fetch(`${API_URL}/distributors`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const distData = await distResponse.json();
+        
+        const distributor = distData.distributors.find(d => d._id === user.id);
+        if (!distributor) {
+            showToast('❌ Distributor not found');
+            return;
+        }
+
+        const newProduct = {
+            name: name,
+            category: category,
+            price: price,
+            unit: unit,
+            size: size,
+            stock: stock
+        };
+
+        const products = [...(distributor.products || []), newProduct];
+
+        const response = await fetch(`${API_URL}/distributors/${distributor._id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ products: products })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showToast('✅ Product added successfully!');
+            document.getElementById('addProductForm').reset();
+            toggleAddProductForm();
+        } else {
+            showToast('❌ Failed to add product: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error adding product:', error);
+        showToast('❌ Failed to add product');
+    }
+}

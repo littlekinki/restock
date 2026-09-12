@@ -33,6 +33,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('shop');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -135,13 +136,23 @@ export default function LoginScreen() {
             keyboardType="phone-pad"
           />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+           />
+           <TouchableOpacity
+             style={styles.eyeButton}
+             onPress={() => setShowPassword(!showPassword)}
+           >
+            <Text style={styles.eyeIcon}>
+              {showPassword ? '👁️' : '🙈'}
+            </Text>
+           </TouchableOpacity>
+         </View>
 
           <TouchableOpacity
             style={styles.loginButton}
@@ -250,4 +261,25 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontWeight: '500',
   },
+
+  passwordContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: COLORS.white,
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: COLORS.lightGray,
+  marginBottom: 16,
+},
+passwordInput: {
+  flex: 1,
+  padding: 16,
+  fontSize: 16,
+},
+eyeButton: {
+  padding: 16,
+},
+eyeIcon: {
+  fontSize: 20,
+},
 });
