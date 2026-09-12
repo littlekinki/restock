@@ -571,9 +571,119 @@ function logout() {
 }
 
 // ============================================================
+// LOAD DISTRIBUTOR INFO IN SIDEBAR
+// ============================================================
+function loadDistributorInfo() {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    if (user && user.name) {
+        // Set the distributor name
+        const nameEl = document.getElementById('distributorName');
+        if (nameEl) nameEl.textContent = user.name;
+        
+        // Set the avatar initials
+        const initials = user.name
+            .split(' ')
+            .map(word => word[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+        const avatarEl = document.getElementById('distributorAvatar');
+        if (avatarEl) avatarEl.textContent = initials;
+    }
+}
+
+// ============================================================
+// SHOW SECTION (Sidebar Navigation)
+// ============================================================
+function showSection(section) {
+    // Remove active class from all nav items
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+
+    // Add active class to clicked item
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    }
+
+    const orderList = document.getElementById('orderList');
+    const statsContainer = document.getElementById('statsContainer');
+    const ordersSection = document.querySelector('.orders-section');
+
+    switch(section) {
+        case 'dashboard':
+        case 'orders':
+            statsContainer.style.display = 'grid';
+            if (ordersSection) ordersSection.style.display = 'block';
+            orderList.innerHTML = '<div class="loading">Loading orders...</div>';
+            fetchOrders();
+            break;
+        case 'products':
+            statsContainer.style.display = 'none';
+            if (ordersSection) ordersSection.style.display = 'block';
+            orderList.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <p style="font-size: 48px;">📦</p>
+                    <p style="font-size: 18px; font-weight: 600; color: var(--gray-700);">My Products</p>
+                    <p style="color: var(--gray-500); margin-top: 8px;">Use the "+ Add Product" button above to add products.</p>
+                </div>
+            `;
+            break;
+        case 'deliveries':
+            statsContainer.style.display = 'none';
+            if (ordersSection) ordersSection.style.display = 'block';
+            orderList.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <p style="font-size: 48px;">🚚</p>
+                    <p style="font-size: 18px; font-weight: 600; color: var(--gray-700);">Deliveries</p>
+                    <p style="color: var(--gray-500); margin-top: 8px;">No active deliveries right now.</p>
+                </div>
+            `;
+            break;
+        case 'payments':
+            statsContainer.style.display = 'none';
+            if (ordersSection) ordersSection.style.display = 'block';
+            orderList.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <p style="font-size: 48px;">💰</p>
+                    <p style="font-size: 18px; font-weight: 600; color: var(--gray-700);">Payments</p>
+                    <p style="color: var(--gray-500); margin-top: 8px;">No payments yet. Payments will appear here once orders are delivered.</p>
+                </div>
+            `;
+            break;
+        case 'reports':
+            statsContainer.style.display = 'none';
+            if (ordersSection) ordersSection.style.display = 'block';
+            orderList.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <p style="font-size: 48px;">📈</p>
+                    <p style="font-size: 18px; font-weight: 600; color: var(--gray-700);">Reports</p>
+                    <p style="color: var(--gray-500); margin-top: 8px;">Reports will be available once you have more orders.</p>
+                </div>
+            `;
+            break;
+        case 'settings':
+            statsContainer.style.display = 'none';
+            if (ordersSection) ordersSection.style.display = 'block';
+            orderList.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <p style="font-size: 48px;">⚙️</p>
+                    <p style="font-size: 18px; font-weight: 600; color: var(--gray-700);">Settings</p>
+                    <p style="color: var(--gray-500); margin-top: 8px;">Settings will be available soon.</p>
+                </div>
+            `;
+            break;
+        default:
+            fetchOrders();
+    }
+}
+
+// ============================================================
 // INITIAL LOAD
 // ============================================================
 console.log('✅ Distributor dashboard loaded!');
+loadDistributorInfo();
 loadDistributorFilter();
 fetchOrders();
 

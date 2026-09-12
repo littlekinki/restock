@@ -15,34 +15,34 @@
                 <img src="../landing-page/assets/images/logo.png" alt="Restock" class="logo-img" />
             </div>
             <nav class="nav-menu">
-                <a href="#" class="nav-item active">
+                <a href="#" class="nav-item active" onclick="showSection('dashboard')">
                     <span class="nav-icon">📊</span> Dashboard
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" onclick="showSection('orders')">
                     <span class="nav-icon">📋</span> New Orders
                     <span class="badge" id="pendingBadge">0</span>
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" onclick="showSection('products')">
                     <span class="nav-icon">📦</span> My Products
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" onclick="showSection('deliveries')">
                     <span class="nav-icon">🚚</span> Deliveries
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" onclick="showSection('payments')">
                     <span class="nav-icon">💰</span> Payments
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" onclick="showSection('reports')">
                     <span class="nav-icon">📈</span> Reports
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" onclick="showSection('settings')">
                     <span class="nav-icon">⚙️</span> Settings
                 </a>
             </nav>
             <div class="sidebar-footer">
                 <div class="distributor-info">
-                    <span class="avatar">BI</span>
+                    <span class="avatar" id="distributorAvatar">DI</span>
                     <div>
-                        <p class="name">Baba Ijebu Dist.</p>
+                        <p class="name" id="distributorName">Loading...</p>
                         <p class="status">🟢 Online</p>
                     </div>
                 </div>
