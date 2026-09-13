@@ -12,14 +12,15 @@
         <!-- Header -->
         <header class="header">
             <div class="logo">
-                <img src="../landing-page/assets/images/logo.png" alt="Restock" class="logo-img" />
+                <span class="logo-icon">🏍️</span>
+                <span class="logo-text">Restock Rider</span>
             </div>
             <div class="header-actions">
                 <span class="status-badge" id="statusBadge">🟢 Available</span>
                 <button class="btn btn-outline" onclick="toggleStatus()">Toggle Status</button>
                 <button class="btn btn-outline" onclick="refreshDeliveries()">🔄 Refresh</button>
-                <!-- ✅ ADD LOGOUT BUTTON -->
-                 <button class="btn btn-outline" onclick="logout()">🚪 Logout</button>
+                <button class="btn btn-outline" onclick="showSection('settings')">⚙️ Settings</button>
+                <button class="btn btn-outline" onclick="logout()">🚪 Logout</button>
             </div>
         </header>
 
@@ -93,12 +94,157 @@
 
 
                 <div class="modal-actions">
-    <button class="btn btn-secondary" onclick="closeModal()">Close</button>
-    <button class="btn btn-warning" id="pickupBtn" onclick="pickupDelivery()" style="display:none;">📦 Pick Up Order</button>
-    <button class="btn btn-success" id="deliverBtn" onclick="deliverOrder()" style="display:none;">✅ Mark as Delivered</button>
-</div>
+                    <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                    <button class="btn btn-warning" id="pickupBtn" onclick="pickupDelivery()" style="display:none;">📦 Pick Up Order</button>
+                    <button class="btn btn-success" id="deliverBtn" onclick="deliverOrder()" style="display:none;">✅ Mark as Delivered</button>
+                </div>
             </div>
         </div>
+
+                <!-- ✅ RIDER SETTINGS SECTION -->
+        <section class="settings-section" id="settingsSection" style="display: none; margin-top: 32px;">
+
+            <!-- Profile Settings -->
+            <div class="settings-card">
+                <h2>👤 Profile Settings</h2>
+                <form id="profileForm" onsubmit="saveProfile(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Full Name</label>
+                            <input type="text" id="settingsFullName" placeholder="Full name" />
+                        </div>
+                        <div class="form-group">
+                            <label>Phone Number</label>
+                            <input type="tel" id="settingsPhone" placeholder="Phone number" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="settingsEmail" placeholder="Email address" />
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">💾 Save Profile</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Vehicle Settings -->
+            <div class="settings-card">
+                <h2>🏍️ Vehicle Settings</h2>
+                <form id="vehicleForm" onsubmit="saveVehicle(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Vehicle Type</label>
+                            <select id="settingsVehicleType">
+                                <option value="motorcycle">Motorcycle</option>
+                                <option value="tricycle">Tricycle (Keke)</option>
+                                <option value="bicycle">Bicycle</option>
+                                <option value="car">Car</option>
+                                <option value="van">Van</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Vehicle Plate Number</label>
+                            <input type="text" id="settingsVehiclePlate" placeholder="e.g., LAG-123-AB" />
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">💾 Save Vehicle</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Service Area -->
+            <div class="settings-card">
+                <h2>📍 Service Area</h2>
+                <form id="serviceForm" onsubmit="saveServiceArea(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>City</label>
+                            <input type="text" id="settingsCity" placeholder="e.g., Mushin" />
+                        </div>
+                        <div class="form-group">
+                            <label>State</label>
+                            <input type="text" id="settingsState" placeholder="e.g., Lagos" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Service Radius (km)</label>
+                            <input type="number" id="settingsRadius" placeholder="e.g., 10" />
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">💾 Save Service Area</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Bank Details -->
+            <div class="settings-card">
+                <h2>💰 Bank Details</h2>
+                <form id="bankForm" onsubmit="saveBankDetails(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Bank Name</label>
+                            <input type="text" id="settingsBankName" placeholder="e.g., GTBank" />
+                        </div>
+                        <div class="form-group">
+                            <label>Account Number</label>
+                            <input type="text" id="settingsAccountNumber" placeholder="e.g., 0123456789" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Account Name</label>
+                            <input type="text" id="settingsAccountName" placeholder="e.g., Emeka Okafor" />
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">💾 Save Bank Details</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Password Settings -->
+            <div class="settings-card">
+                <h2>🔒 Change Password</h2>
+                <form id="passwordForm" onsubmit="changePassword(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Current Password</label>
+                            <input type="password" id="currentPassword" placeholder="Current password" />
+                        </div>
+                        <div class="form-group">
+                            <label>New Password</label>
+                            <input type="password" id="newPassword" placeholder="New password" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Confirm New Password</label>
+                            <input type="password" id="confirmPassword" placeholder="Confirm new password" />
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">🔒 Change Password</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="settings-card" style="border: 1px solid #E17055;">
+                <h2 style="color: #E17055;">⚠️ Danger Zone</h2>
+                <p style="font-size: 14px; color: var(--gray-600); margin-bottom: 16px;">
+                    Once you deactivate your account, there is no going back.
+                </p>
+                <button class="btn" style="background: #E17055; color: white;" onclick="deactivateAccount()">
+                    🗑️ Deactivate Account
+                </button>
+            </div>
+        </section>
 
         <!-- Toast Container -->
         <div id="toastContainer"></div>

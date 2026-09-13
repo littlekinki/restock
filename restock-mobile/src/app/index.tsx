@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import { registerForPushNotificationsAsync } from '../utils/notifications';
 
 const COLORS = {
   primary: '#01311F',       
@@ -79,6 +80,28 @@ export default function LoginScreen() {
       if (data.success) {
         await AsyncStorage.setItem('token', data.token);
         await AsyncStorage.setItem('user', JSON.stringify(data.user));
+
+      const pushToken = await registerForPushNotificationsAsync();
+      if (pushToken) {
+        // Save the push token to the backend for this user
+        try {
+          const authToken = localStorage.getItem('token');
+          await fetch(`${API_URL}/auth/push-token`, {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${authToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              userId: data.user.id, 
+              role: data.user.role, 
+              pushToken 
+            }),
+          });
+        } catch (e) {
+          console.log('Failed to save push token:', e);
+        }
+      }
         navigateToDashboard(role);
       } else {
         Alert.alert('Login Failed', data.error || 'Invalid credentials');

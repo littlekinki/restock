@@ -6,6 +6,7 @@ const shopSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
   email: { type: String },
   password: { type: String, required: true },
+  pushToken: { type: String, default: null },
   address: {
     street: String,
     city: String,

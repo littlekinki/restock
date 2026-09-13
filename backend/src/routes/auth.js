@@ -245,4 +245,27 @@ router.get('/me', async (req, res) => {
     }
 });
 
+// ============================================================
+// SAVE PUSH TOKEN
+// ============================================================
+router.patch('/push-token', auth, async (req, res) => {
+    try {
+        const { userId, role, pushToken } = req.body;
+
+        let userModel;
+        switch (role) {
+            case 'shop': userModel = Shop; break;
+            case 'distributor': userModel = Distributor; break;
+            case 'rider': userModel = Rider; break;
+            default: return res.status(400).json({ success: false, error: 'Invalid role' });
+        }
+
+        await userModel.findByIdAndUpdate(userId, { pushToken });
+        res.json({ success: true, message: 'Push token saved' });
+    } catch (error) {
+        console.error('Push token error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 module.exports = router;

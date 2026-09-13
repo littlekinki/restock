@@ -6,6 +6,7 @@ const distributorSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   email: { type: String },
+  pushToken: { type: String, default: null },
   address: {
     street: String,
     city: String,
@@ -34,5 +35,7 @@ const distributorSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
+
+
 
 module.exports = mongoose.model('Distributor', distributorSchema);

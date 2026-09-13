@@ -620,60 +620,54 @@ function showSection(section) {
             fetchOrders();
             break;
         case 'products':
-            statsContainer.style.display = 'none';
+            // Show products message
             if (ordersSection) ordersSection.style.display = 'block';
-            orderList.innerHTML = `
-                <div style="text-align: center; padding: 60px 20px;">
-                    <p style="font-size: 48px;">📦</p>
-                    <p style="font-size: 18px; font-weight: 600; color: var(--gray-700);">My Products</p>
-                    <p style="color: var(--gray-500); margin-top: 8px;">Use the "+ Add Product" button above to add products.</p>
-                </div>
-            `;
+            orderList.innerHTML = '<div class="loading">Loading products...</div>';
+            loadDistributorProducts();
             break;
         case 'deliveries':
-            statsContainer.style.display = 'none';
             if (ordersSection) ordersSection.style.display = 'block';
-            orderList.innerHTML = `
-                <div style="text-align: center; padding: 60px 20px;">
-                    <p style="font-size: 48px;">🚚</p>
-                    <p style="font-size: 18px; font-weight: 600; color: var(--gray-700);">Deliveries</p>
-                    <p style="color: var(--gray-500); margin-top: 8px;">No active deliveries right now.</p>
-                </div>
-            `;
+            orderList.innerHTML = '<div class="loading">Loading deliveries...</div>';
+            loadDistributorDeliveries();
             break;
         case 'payments':
-            statsContainer.style.display = 'none';
             if (ordersSection) ordersSection.style.display = 'block';
-            orderList.innerHTML = `
-                <div style="text-align: center; padding: 60px 20px;">
-                    <p style="font-size: 48px;">💰</p>
-                    <p style="font-size: 18px; font-weight: 600; color: var(--gray-700);">Payments</p>
-                    <p style="color: var(--gray-500); margin-top: 8px;">No payments yet. Payments will appear here once orders are delivered.</p>
-                </div>
-            `;
+            orderList.innerHTML = '<div class="loading">Loading payments...</div>';
+            loadDistributorPayments();
             break;
         case 'reports':
-            statsContainer.style.display = 'none';
             if (ordersSection) ordersSection.style.display = 'block';
-            orderList.innerHTML = `
-                <div style="text-align: center; padding: 60px 20px;">
-                    <p style="font-size: 48px;">📈</p>
-                    <p style="font-size: 18px; font-weight: 600; color: var(--gray-700);">Reports</p>
-                    <p style="color: var(--gray-500); margin-top: 8px;">Reports will be available once you have more orders.</p>
-                </div>
-            `;
+            orderList.innerHTML = '<div class="loading">Loading reports...</div>';
+            loadDistributorReports();
             break;
-        case 'settings':
-            statsContainer.style.display = 'none';
-            if (ordersSection) ordersSection.style.display = 'block';
-            orderList.innerHTML = `
-                <div style="text-align: center; padding: 60px 20px;">
-                    <p style="font-size: 48px;">⚙️</p>
-                    <p style="font-size: 18px; font-weight: 600; color: var(--gray-700);">Settings</p>
-                    <p style="color: var(--gray-500); margin-top: 8px;">Settings will be available soon.</p>
-                </div>
-            `;
-            break;
+       case 'settings':
+        statsContainer.style.display = 'none';
+        if (ordersSection) ordersSection.style.display = 'none';
+        
+        // Hide add product section // 
+        const addProductSec = document.getElementById('addProductSection');
+        if (addProductSec) addProductSec.style.display = 'none';
+        
+        // Show settings section
+        const settingsSection = document.getElementById('settingsSection');
+        if (settingsSection) {
+            settingsSection.style.display = 'block';
+            loadSettingsData(); // Load current settings
+       }
+       break;
+
+       case 'dashboard':
+       case 'orders':
+        statsContainer.style.display = 'grid';
+        if (ordersSection) ordersSection.style.display = 'block';
+        
+        // Hide settings section
+        const settingsSec1 = document.getElementById('settingsSection');
+        if (settingsSec1) settingsSec1.style.display = 'none';
+        
+        orderList.innerHTML = '<div class="loading">Loading orders...</div>';
+        fetchOrders();
+        break;
         default:
             fetchOrders();
     }
@@ -765,5 +759,539 @@ async function saveProduct(event) {
     } catch (error) {
         console.error('Error adding product:', error);
         showToast('❌ Failed to add product');
+    }
+}
+
+// ============================================================
+// LOAD SETTINGS DATA
+// ============================================================
+async function loadSettingsData() {
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        // Fetch distributor data
+        const response = await fetch(`${API_URL}/distributors`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            const distributor = data.distributors.find(d => d._id === user.id);
+            if (distributor) {
+                // Profile
+                document.getElementById('settingsBusinessName').value = distributor.businessName || '';
+                document.getElementById('settingsOwnerName').value = distributor.ownerName || '';
+                document.getElementById('settingsPhone').value = distributor.phone || '';
+                document.getElementById('settingsEmail').value = distributor.email || '';
+                
+                // Address
+                document.getElementById('settingsStreet').value = distributor.address?.street || '';
+                document.getElementById('settingsCity').value = distributor.address?.city || '';
+                document.getElementById('settingsState').value = distributor.address?.state || '';
+                document.getElementById('settingsLandmark').value = distributor.address?.landmark || '';
+                
+                // Delivery
+                document.getElementById('settingsRadius').value = distributor.deliveryRadius || 10;
+                document.getElementById('settingsMinOrder').value = distributor.minOrder || 0;
+                document.getElementById('settingsDeliveryFee').value = distributor.deliveryFee || 0;
+                document.getElementById('settingsHours').value = distributor.operatingHours || '';
+                
+                // Payment
+                document.getElementById('settingsBankName').value = distributor.bankDetails?.bankName || '';
+                document.getElementById('settingsAccountNumber').value = distributor.bankDetails?.accountNumber || '';
+                document.getElementById('settingsAccountName').value = distributor.bankDetails?.accountName || '';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+}
+
+// ============================================================
+// SAVE PROFILE
+// ============================================================
+async function saveProfile(event) {
+    event.preventDefault();
+    await updateDistributorSettings({
+        businessName: document.getElementById('settingsBusinessName').value,
+        ownerName: document.getElementById('settingsOwnerName').value,
+        phone: document.getElementById('settingsPhone').value,
+        email: document.getElementById('settingsEmail').value
+    }, 'Profile saved successfully!');
+}
+
+// ============================================================
+// SAVE ADDRESS
+// ============================================================
+async function saveAddress(event) {
+    event.preventDefault();
+    await updateDistributorSettings({
+        address: {
+            street: document.getElementById('settingsStreet').value,
+            city: document.getElementById('settingsCity').value,
+            state: document.getElementById('settingsState').value,
+            landmark: document.getElementById('settingsLandmark').value
+        }
+    }, 'Address saved successfully!');
+}
+
+// ============================================================
+// SAVE DELIVERY SETTINGS
+// ============================================================
+async function saveDelivery(event) {
+    event.preventDefault();
+    await updateDistributorSettings({
+        deliveryRadius: parseInt(document.getElementById('settingsRadius').value) || 10,
+        minOrder: parseInt(document.getElementById('settingsMinOrder').value) || 0,
+        deliveryFee: parseInt(document.getElementById('settingsDeliveryFee').value) || 0,
+        operatingHours: document.getElementById('settingsHours').value
+    }, 'Delivery settings saved!');
+}
+
+// ============================================================
+// SAVE PAYMENT DETAILS
+// ============================================================
+async function savePayment(event) {
+    event.preventDefault();
+    await updateDistributorSettings({
+        bankDetails: {
+            bankName: document.getElementById('settingsBankName').value,
+            accountNumber: document.getElementById('settingsAccountNumber').value,
+            accountName: document.getElementById('settingsAccountName').value
+        }
+    }, 'Payment details saved!');
+}
+
+// ============================================================
+// SAVE NOTIFICATIONS
+// ============================================================
+async function saveNotifications() {
+    const smsEnabled = document.getElementById('smsNotifications').checked;
+    const whatsappEnabled = document.getElementById('whatsappNotifications').checked;
+    
+    await updateDistributorSettings({
+        notifications: {
+            sms: smsEnabled,
+            whatsapp: whatsappEnabled
+        }
+    }, 'Notification settings saved!');
+}
+
+// ============================================================
+// UPDATE DISTRIBUTOR SETTINGS (Helper)
+// ============================================================
+async function updateDistributorSettings(updates, successMessage) {
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        // Get current distributor
+        const distResponse = await fetch(`${API_URL}/distributors`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const distData = await distResponse.json();
+        
+        const distributor = distData.distributors.find(d => d._id === user.id);
+        if (!distributor) {
+            showToast('❌ Distributor not found');
+            return;
+        }
+
+        // Merge updates with existing data
+        const mergedData = {
+            ...distributor,
+            ...updates,
+            address: updates.address 
+                ? { ...distributor.address, ...updates.address }
+                : distributor.address,
+            bankDetails: updates.bankDetails
+                ? { ...distributor.bankDetails, ...updates.bankDetails }
+                : distributor.bankDetails,
+            notifications: updates.notifications
+                ? { ...distributor.notifications, ...updates.notifications }
+                : distributor.notifications
+        };
+
+        const response = await fetch(`${API_URL}/distributors/${distributor._id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(mergedData)
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showToast('✅ ' + successMessage);
+            
+            // Update localStorage if name or phone changed
+            if (updates.businessName || updates.phone) {
+                const updatedUser = {
+                    ...user,
+                    name: updates.businessName || user.name,
+                    phone: updates.phone || user.phone
+                };
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+                loadDistributorInfo();
+            }
+        } else {
+            showToast('❌ Failed: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error updating settings:', error);
+        showToast('❌ Failed to save settings');
+    }
+}
+
+// ============================================================
+// CHANGE PASSWORD
+// ============================================================
+async function changePassword(event) {
+    event.preventDefault();
+    
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        showToast('⚠️ Please fill in all password fields');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        showToast('⚠️ New passwords do not match');
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        showToast('⚠️ Password must be at least 6 characters');
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        const response = await fetch(`${API_URL}/auth/change-password`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userId: user.id,
+                role: 'distributor',
+                currentPassword: currentPassword,
+                newPassword: newPassword
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showToast('✅ Password changed successfully!');
+            document.getElementById('passwordForm').reset();
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to change password'));
+        }
+    } catch (error) {
+        console.error('Error changing password:', error);
+        showToast('❌ Failed to change password');
+    }
+}
+
+// ============================================================
+// DEACTIVATE ACCOUNT
+// ============================================================
+function deactivateAccount() {
+    if (confirm('⚠️ Are you sure you want to deactivate your account? This action cannot be undone.')) {
+        if (confirm('🚨 This is your last chance. Deactivate permanently?')) {
+            showToast('⚠️ Account deactivation coming soon. Contact support.');
+        }
+    }
+}
+
+// ============================================================
+// LOAD DISTRIBUTOR PRODUCTS
+// ============================================================
+async function loadDistributorProducts() {
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const orderList = document.getElementById('orderList');
+
+        const response = await fetch(`${API_URL}/distributors`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            const distributor = data.distributors.find(d => d._id === user.id);
+            
+            if (!distributor || !distributor.products || distributor.products.length === 0) {
+                orderList.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <p style="font-size: 48px;">📦</p>
+                        <p style="font-size: 18px; font-weight: 600; color: var(--gray-700);">No Products Yet</p>
+                        <p style="color: var(--gray-500); margin-top: 8px;">Click "+ Add Product" above to add your first product.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            orderList.innerHTML = distributor.products.map((product, index) => `
+                <div class="order-card" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="order-info">
+                        <div class="order-shop">📦 ${product.name}</div>
+                        <div class="order-id">${product.category || 'General'} • ${product.size || ''} ${product.unit || ''}</div>
+                        <div class="order-items">${product.stock || 0} in stock</div>
+                    </div>
+                    <div class="order-meta">
+                        <div class="order-total">₦${product.price?.toLocaleString() || 0}</div>
+                        <button class="btn btn-outline btn-sm" onclick="deleteProduct(${index})" style="margin-top: 8px;">🗑️ Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading products:', error);
+        document.getElementById('orderList').innerHTML = '<p style="text-align: center; color: var(--gray-500);">Failed to load products</p>';
+    }
+}
+
+// ============================================================
+// DELETE PRODUCT
+// ============================================================
+async function deleteProduct(index) {
+    if (!confirm('Are you sure you want to delete this product?')) return;
+
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+        const distResponse = await fetch(`${API_URL}/distributors`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const distData = await distResponse.json();
+        const distributor = distData.distributors.find(d => d._id === user.id);
+
+        if (!distributor) {
+            showToast('❌ Distributor not found');
+            return;
+        }
+
+        const updatedProducts = distributor.products.filter((_, i) => i !== index);
+
+        const response = await fetch(`${API_URL}/distributors/${distributor._id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ products: updatedProducts })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showToast('✅ Product deleted!');
+            loadDistributorProducts();
+        } else {
+            showToast('❌ Failed to delete product');
+        }
+    } catch (error) {
+        console.error('Error deleting product:', error);
+        showToast('❌ Failed to delete product');
+    }
+}
+
+// ============================================================
+// LOAD DISTRIBUTOR DELIVERIES
+// ============================================================
+async function loadDistributorDeliveries() {
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const orderList = document.getElementById('orderList');
+
+        const response = await fetch(`${API_URL}/orders`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            const deliveries = data.orders.filter(o => 
+                o.distributorId?._id === user.id && 
+                (o.status === 'picked_up' || o.status === 'out_for_delivery')
+            );
+
+            if (deliveries.length === 0) {
+                orderList.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <p style="font-size: 48px;">🚚</p>
+                        <p style="font-size: 18px; font-weight: 600; color: var(--gray-700);">No Active Deliveries</p>
+                        <p style="color: var(--gray-500); margin-top: 8px;">Deliveries will appear here when orders are picked up.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            orderList.innerHTML = deliveries.map(order => `
+                <div class="order-card">
+                    <div class="order-info">
+                        <div class="order-shop">🏪 ${order.shopId?.businessName || 'Unknown Shop'}</div>
+                        <div class="order-id">#${order._id.slice(-6).toUpperCase()}</div>
+                        <div class="order-items">🏍️ Rider: ${order.riderId?.fullName || 'Not assigned'}</div>
+                    </div>
+                    <div class="order-meta">
+                        <div class="order-total">₦${order.total?.toLocaleString() || 0}</div>
+                        <span class="order-status ${order.status}">${order.status?.replace('_', ' ').toUpperCase()}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading deliveries:', error);
+    }
+}
+
+// ============================================================
+// LOAD DISTRIBUTOR PAYMENTS
+// ============================================================
+async function loadDistributorPayments() {
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const orderList = document.getElementById('orderList');
+
+        const response = await fetch(`${API_URL}/orders`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            const orders = data.orders.filter(o => o.distributorId?._id === user.id);
+
+            const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+            const deliveredRevenue = orders
+                .filter(o => o.status === 'delivered')
+                .reduce((sum, o) => sum + (o.total || 0), 0);
+            const pendingRevenue = totalRevenue - deliveredRevenue;
+
+            orderList.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
+                    <div style="background: white; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid var(--gray-200);">
+                        <p style="font-size: 28px; font-weight: 700; color: var(--primary);">₦${totalRevenue.toLocaleString()}</p>
+                        <p style="font-size: 14px; color: var(--gray-600);">Total Revenue</p>
+                    </div>
+                    <div style="background: white; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid var(--gray-200); border-left: 4px solid var(--secondary);">
+                        <p style="font-size: 28px; font-weight: 700; color: var(--secondary);">₦${deliveredRevenue.toLocaleString()}</p>
+                        <p style="font-size: 14px; color: var(--gray-600);">Paid</p>
+                    </div>
+                    <div style="background: white; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid var(--gray-200); border-left: 4px solid var(--warning);">
+                        <p style="font-size: 28px; font-weight: 700; color: var(--warning);">₦${pendingRevenue.toLocaleString()}</p>
+                        <p style="font-size: 14px; color: var(--gray-600);">Pending</p>
+                    </div>
+                </div>
+                <p style="font-weight: 600; margin-bottom: 12px; color: var(--gray-700);">Recent Payments</p>
+                ${orders.slice(0, 10).map(order => `
+                    <div class="order-card">
+                        <div class="order-info">
+                            <div class="order-shop">#${order._id.slice(-6).toUpperCase()}</div>
+                            <div class="order-id">${new Date(order.createdAt).toLocaleDateString()}</div>
+                        </div>
+                        <div class="order-meta">
+                            <div class="order-total">₦${order.total?.toLocaleString() || 0}</div>
+                            <span class="order-status ${order.status}">${order.status?.replace('_', ' ').toUpperCase()}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading payments:', error);
+    }
+}
+
+// ============================================================
+// LOAD DISTRIBUTOR REPORTS
+// ============================================================
+async function loadDistributorReports() {
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const orderList = document.getElementById('orderList');
+
+        const response = await fetch(`${API_URL}/orders`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            const orders = data.orders.filter(o => o.distributorId?._id === user.id);
+            
+            const totalOrders = orders.length;
+            const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
+            const pendingOrders = orders.filter(o => o.status === 'pending').length;
+            const confirmedOrders = orders.filter(o => o.status === 'confirmed').length;
+            
+            const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+            const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+            // Top products
+            const productCount = {};
+            orders.forEach(order => {
+                (order.items || []).forEach(item => {
+                    productCount[item.productName] = (productCount[item.productName] || 0) + item.quantity;
+                });
+            });
+            const topProducts = Object.entries(productCount)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            orderList.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px;">
+                    <div style="background: white; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid var(--gray-200);">
+                        <p style="font-size: 28px; font-weight: 700; color: var(--primary);">${totalOrders}</p>
+                        <p style="font-size: 14px; color: var(--gray-600);">Total Orders</p>
+                    </div>
+                    <div style="background: white; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid var(--gray-200);">
+                        <p style="font-size: 28px; font-weight: 700; color: var(--primary);">₦${totalRevenue.toLocaleString()}</p>
+                        <p style="font-size: 14px; color: var(--gray-600);">Total Revenue</p>
+                    </div>
+                    <div style="background: white; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid var(--gray-200);">
+                        <p style="font-size: 28px; font-weight: 700; color: var(--primary);">₦${avgOrderValue.toLocaleString()}</p>
+                        <p style="font-size: 14px; color: var(--gray-600);">Avg Order Value</p>
+                    </div>
+                    <div style="background: white; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid var(--gray-200);">
+                        <p style="font-size: 28px; font-weight: 700; color: var(--primary);">${deliveredOrders}</p>
+                        <p style="font-size: 14px; color: var(--gray-600);">Delivered</p>
+                    </div>
+                </div>
+
+                <p style="font-weight: 600; margin-bottom: 12px; color: var(--gray-700);">📊 Order Status Breakdown</p>
+                <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                        <span>🟡 Pending</span><span>${pendingOrders}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                        <span>🔵 Confirmed</span><span>${confirmedOrders}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                        <span>🟢 Delivered</span><span>${deliveredOrders}</span>
+                    </div>
+                </div>
+
+                <p style="font-weight: 600; margin-bottom: 12px; color: var(--gray-700);">🏆 Top Products</p>
+                ${topProducts.length > 0 ? topProducts.map(([name, count]) => `
+                    <div style="background: white; padding: 12px 16px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between;">
+                        <span>${name}</span>
+                        <span style="font-weight: 600;">${count} units</span>
+                    </div>
+                `).join('') : '<p style="color: var(--gray-500);">No products sold yet</p>'}
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading reports:', error);
     }
 }

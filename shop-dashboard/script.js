@@ -381,3 +381,219 @@ function logout() {
 // INIT
 // ============================================================
 loadShops();
+
+// ============================================================
+// SHOW SECTION (Sidebar Navigation)
+// ============================================================
+function showSection(section) {
+    const settingsSection = document.getElementById('settingsSection');
+    const ordersSection = document.querySelector('.orders-section');
+    const statsContainer = document.getElementById('statsContainer');
+
+    // Hide all sections first
+    if (settingsSection) settingsSection.style.display = 'none';
+    if (ordersSection) ordersSection.style.display = 'block';
+    if (statsContainer) statsContainer.style.display = 'grid';
+
+    if (section === 'settings') {
+        if (settingsSection) {
+            settingsSection.style.display = 'block';
+            if (ordersSection) ordersSection.style.display = 'none';
+            if (statsContainer) statsContainer.style.display = 'none';
+            loadSettingsData();
+        }
+    } else {
+        // Show dashboard by default
+        loadDashboard();
+    }
+}
+
+// ============================================================
+// LOAD SETTINGS DATA
+// ============================================================
+async function loadSettingsData() {
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        // Fetch shop data
+        const response = await fetch(`${API_URL}/shops`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            const shop = data.shops.find(s => s._id === user.id);
+            if (shop) {
+                // Profile
+                document.getElementById('settingsBusinessName').value = shop.businessName || '';
+                document.getElementById('settingsOwnerName').value = shop.ownerName || '';
+                document.getElementById('settingsPhone').value = shop.phone || '';
+                document.getElementById('settingsEmail').value = shop.email || '';
+                
+                // Address
+                document.getElementById('settingsStreet').value = shop.address?.street || '';
+                document.getElementById('settingsCity').value = shop.address?.city || '';
+                document.getElementById('settingsState').value = shop.address?.state || '';
+                document.getElementById('settingsLandmark').value = shop.address?.landmark || '';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+}
+
+// ============================================================
+// SAVE PROFILE
+// ============================================================
+async function saveProfile(event) {
+    event.preventDefault();
+    await updateShopSettings({
+        businessName: document.getElementById('settingsBusinessName').value,
+        ownerName: document.getElementById('settingsOwnerName').value,
+        phone: document.getElementById('settingsPhone').value,
+        email: document.getElementById('settingsEmail').value
+    }, 'Profile saved successfully!');
+}
+
+// ============================================================
+// SAVE ADDRESS
+// ============================================================
+async function saveAddress(event) {
+    event.preventDefault();
+    await updateShopSettings({
+        address: {
+            street: document.getElementById('settingsStreet').value,
+            city: document.getElementById('settingsCity').value,
+            state: document.getElementById('settingsState').value,
+            landmark: document.getElementById('settingsLandmark').value
+        }
+    }, 'Address saved successfully!');
+}
+
+// ============================================================
+// UPDATE SHOP SETTINGS (Helper)
+// ============================================================
+async function updateShopSettings(updates, successMessage) {
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        // Get current shop
+        const shopResponse = await fetch(`${API_URL}/shops`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const shopData = await shopResponse.json();
+        
+        const shop = shopData.shops.find(s => s._id === user.id);
+        if (!shop) {
+            showToast('❌ Shop not found');
+            return;
+        }
+
+        // Merge updates with existing data
+        const mergedData = {
+            ...shop,
+            ...updates,
+            address: updates.address 
+                ? { ...shop.address, ...updates.address }
+                : shop.address
+        };
+
+        const response = await fetch(`${API_URL}/shops/${shop._id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(mergedData)
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showToast('✅ ' + successMessage);
+            
+            // Update localStorage if name or phone changed
+            if (updates.businessName || updates.phone) {
+                const updatedUser = {
+                    ...user,
+                    name: updates.businessName || user.name,
+                    phone: updates.phone || user.phone
+                };
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+            }
+        } else {
+            showToast('❌ Failed: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error updating settings:', error);
+        showToast('❌ Failed to save settings');
+    }
+}
+
+// ============================================================
+// CHANGE PASSWORD
+// ============================================================
+async function changePassword(event) {
+    event.preventDefault();
+    
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        showToast('⚠️ Please fill in all password fields');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        showToast('⚠️ New passwords do not match');
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        showToast('⚠️ Password must be at least 6 characters');
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        const response = await fetch(`${API_URL}/auth/change-password`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userId: user.id,
+                role: 'shop',
+                currentPassword: currentPassword,
+                newPassword: newPassword
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showToast('✅ Password changed successfully!');
+            document.getElementById('passwordForm').reset();
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to change password'));
+        }
+    } catch (error) {
+        console.error('Error changing password:', error);
+        showToast('❌ Failed to change password');
+    }
+}
+
+// ============================================================
+// DEACTIVATE ACCOUNT
+// ============================================================
+function deactivateAccount() {
+    if (confirm('⚠️ Are you sure you want to deactivate your account? This action cannot be undone.')) {
+        if (confirm('🚨 This is your last chance. Deactivate permanently?')) {
+            showToast('⚠️ Account deactivation coming soon. Contact support.');
+        }
+    }
+}

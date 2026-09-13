@@ -5,6 +5,7 @@ const riderSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   email: { type: String },
+  pushToken: { type: String, default: null },
   vehicleType: {
     type: String,
     enum: ['bicycle', 'motorcycle', 'tricycle', 'car', 'van'],

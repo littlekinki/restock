@@ -505,3 +505,234 @@ function logout() {
 // ============================================================
 console.log('✅ Rider dashboard loaded!');
 loadRiders();
+
+// ============================================================
+// SHOW SECTION
+// ============================================================
+function showSection(section) {
+    const deliveriesSection = document.querySelector('.deliveries-section');
+    const settingsSection = document.getElementById('settingsSection');
+
+    if (section === 'settings') {
+        if (deliveriesSection) deliveriesSection.style.display = 'none';
+        if (settingsSection) {
+            settingsSection.style.display = 'block';
+            loadSettingsData();
+        }
+    } else {
+        if (settingsSection) settingsSection.style.display = 'none';
+        if (deliveriesSection) deliveriesSection.style.display = 'block';
+        loadDeliveries();
+    }
+}
+
+// ============================================================
+// LOAD SETTINGS DATA
+// ============================================================
+async function loadSettingsData() {
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        const response = await fetch(`${API_URL}/riders`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            const rider = data.riders.find(r => r._id === user.id);
+            if (rider) {
+                document.getElementById('settingsFullName').value = rider.fullName || '';
+                document.getElementById('settingsPhone').value = rider.phone || '';
+                document.getElementById('settingsEmail').value = rider.email || '';
+                document.getElementById('settingsVehicleType').value = rider.vehicleType || 'motorcycle';
+                document.getElementById('settingsVehiclePlate').value = rider.vehiclePlate || '';
+                document.getElementById('settingsCity').value = rider.currentLocation?.city || '';
+                document.getElementById('settingsState').value = rider.currentLocation?.state || '';
+                document.getElementById('settingsRadius').value = rider.serviceArea?.radius || 10;
+                document.getElementById('settingsBankName').value = rider.bankDetails?.bankName || '';
+                document.getElementById('settingsAccountNumber').value = rider.bankDetails?.accountNumber || '';
+                document.getElementById('settingsAccountName').value = rider.bankDetails?.accountName || '';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+}
+
+// ============================================================
+// SAVE PROFILE
+// ============================================================
+async function saveProfile(event) {
+    event.preventDefault();
+    await updateRiderSettings({
+        fullName: document.getElementById('settingsFullName').value,
+        phone: document.getElementById('settingsPhone').value,
+        email: document.getElementById('settingsEmail').value
+    }, 'Profile saved successfully!');
+}
+
+// ============================================================
+// SAVE VEHICLE
+// ============================================================
+async function saveVehicle(event) {
+    event.preventDefault();
+    await updateRiderSettings({
+        vehicleType: document.getElementById('settingsVehicleType').value,
+        vehiclePlate: document.getElementById('settingsVehiclePlate').value
+    }, 'Vehicle details saved!');
+}
+
+// ============================================================
+// SAVE SERVICE AREA
+// ============================================================
+async function saveServiceArea(event) {
+    event.preventDefault();
+    await updateRiderSettings({
+        currentLocation: {
+            city: document.getElementById('settingsCity').value,
+            state: document.getElementById('settingsState').value
+        },
+        serviceArea: {
+            city: document.getElementById('settingsCity').value,
+            state: document.getElementById('settingsState').value,
+            radius: parseInt(document.getElementById('settingsRadius').value) || 10
+        }
+    }, 'Service area saved!');
+}
+
+// ============================================================
+// SAVE BANK DETAILS
+// ============================================================
+async function saveBankDetails(event) {
+    event.preventDefault();
+    await updateRiderSettings({
+        bankDetails: {
+            bankName: document.getElementById('settingsBankName').value,
+            accountNumber: document.getElementById('settingsAccountNumber').value,
+            accountName: document.getElementById('settingsAccountName').value
+        }
+    }, 'Bank details saved!');
+}
+
+// ============================================================
+// UPDATE RIDER SETTINGS (Helper)
+// ============================================================
+async function updateRiderSettings(updates, successMessage) {
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        const riderResponse = await fetch(`${API_URL}/riders`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const riderData = await riderResponse.json();
+        
+        const rider = riderData.riders.find(r => r._id === user.id);
+        if (!rider) {
+            showToast('❌ Rider not found', 'error');
+            return;
+        }
+
+        const mergedData = {
+            ...rider,
+            ...updates,
+            currentLocation: updates.currentLocation
+                ? { ...rider.currentLocation, ...updates.currentLocation }
+                : rider.currentLocation,
+            serviceArea: updates.serviceArea
+                ? { ...rider.serviceArea, ...updates.serviceArea }
+                : rider.serviceArea,
+            bankDetails: updates.bankDetails
+                ? { ...rider.bankDetails, ...updates.bankDetails }
+                : rider.bankDetails
+        };
+
+        const response = await fetch(`${API_URL}/riders/${rider._id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(mergedData)
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showToast('✅ ' + successMessage, 'success');
+            if (updates.fullName || updates.phone) {
+                const updatedUser = {
+                    ...user,
+                    name: updates.fullName || user.name,
+                    phone: updates.phone || user.phone
+                };
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+            }
+        } else {
+            showToast('❌ Failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Error updating settings:', error);
+        showToast('❌ Failed to save settings', 'error');
+    }
+}
+
+// ============================================================
+// CHANGE PASSWORD
+// ============================================================
+async function changePassword(event) {
+    event.preventDefault();
+    
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        showToast('⚠️ Please fill in all password fields', 'warning');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        showToast('⚠️ New passwords do not match', 'warning');
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        const response = await fetch(`${API_URL}/auth/change-password`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userId: user.id,
+                role: 'rider',
+                currentPassword: currentPassword,
+                newPassword: newPassword
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showToast('✅ Password changed successfully!', 'success');
+            document.getElementById('passwordForm').reset();
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to change password'), 'error');
+        }
+    } catch (error) {
+        console.error('Error changing password:', error);
+        showToast('❌ Failed to change password', 'error');
+    }
+}
+
+// ============================================================
+// DEACTIVATE ACCOUNT
+// ============================================================
+function deactivateAccount() {
+    if (confirm('⚠️ Are you sure you want to deactivate your account?')) {
+        showToast('⚠️ Account deactivation coming soon.', 'warning');
+    }
+}

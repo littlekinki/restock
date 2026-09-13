@@ -8,6 +8,7 @@ const Rider = require('../models/Rider');
 const mongoose = require('mongoose');
 const smsService = require('../services/smsService');
 const callService = require('../services/callService');
+const pushService = require('../services/pushService');
 
 // ============================================================
 // CREATE ORDER - POST /api/orders
@@ -64,7 +65,7 @@ router.post('/', auth, async (req, res) => {
         console.log('✅ Order created:', order._id);
 
         // ============================================================
-        // ✅ SEND SMS NOTIFICATION 
+        // ✅ SEND SMS NOTIFICATION
         // ============================================================
         try {
             await smsService.notifyShopOrderUpdate(order, 'pending');
@@ -78,7 +79,6 @@ router.post('/', auth, async (req, res) => {
         // ============================================================
         setTimeout(async () => {
             try {
-                // Fetch the order with distributor details
                 const freshOrder = await Order.findById(order._id).populate('distributorId');
                 if (freshOrder && freshOrder.status === 'pending' && freshOrder.distributorId) {
                     const orderIdDisplay = freshOrder._id.slice(-6).toUpperCase();
@@ -91,7 +91,7 @@ router.post('/', auth, async (req, res) => {
             } catch (callError) {
                 console.error('⚠️ Auto-call failed:', callError.message);
             }
-        }, 300000); 
+        }, 300000);
 
         res.status(201).json({
             success: true,
@@ -109,7 +109,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // ============================================================
-// GET ALL ORDERS - GET /api/orders 
+// GET ALL ORDERS - GET /api/orders
 // ============================================================
 router.get('/', auth, async (req, res) => {
     try {
@@ -233,6 +233,30 @@ router.patch('/:id/status', auth, async (req, res) => {
             console.error('⚠️ SMS notification failed:', smsError.message);
         }
 
+        // ============================================================
+        // ✅ SEND PUSH NOTIFICATION TO SHOP OWNER
+        // ============================================================
+        try {
+            const shop = await Shop.findById(order.shopId);
+            if (shop && shop.pushToken) {
+                const statusMessages = {
+                    confirmed: 'Your order has been confirmed!',
+                    picked_up: 'Your order has been picked up by a rider!',
+                    out_for_delivery: 'Your order is out for delivery!',
+                    delivered: 'Your order has been delivered!',
+                };
+                await pushService.sendPushNotification(
+                    shop.pushToken,
+                    '📦 Order Update',
+                    statusMessages[status] || `Order status: ${status}`,
+                    { orderId: order._id }
+                );
+                console.log(`🔔 Push notification sent for order ${order._id}`);
+            }
+        } catch (pushError) {
+            console.error('⚠️ Push notification failed:', pushError.message);
+        }
+
         if (status === 'delivered' && order.riderId) {
             const rider = await Rider.findById(order.riderId);
             if (rider) {
@@ -253,7 +277,7 @@ router.patch('/:id/status', auth, async (req, res) => {
 // ============================================================
 // ASSIGN DISTRIBUTOR - PATCH /api/orders/:id/assign-distributor
 // ============================================================
-router.patch('/:id/assign-distributor', auth,  async (req, res) => {
+router.patch('/:id/assign-distributor', auth, async (req, res) => {
     try {
         const { distributorId } = req.body;
         const order = await Order.findById(req.params.id);
@@ -307,6 +331,21 @@ router.patch('/:id/assign-rider', auth, async (req, res) => {
             return res.status(404).json({ success: false, error: 'Rider not found' });
         }
 
+        // ✅ Notify the rider via push
+        if (rider.pushToken) {
+            try {
+                await pushService.sendPushNotification(
+                    rider.pushToken,
+                    '🚚 New Delivery Assigned',
+                    `Order #${order._id.slice(-6).toUpperCase()} has been assigned to you.`,
+                    { orderId: order._id }
+                );
+                console.log(`🔔 Push sent to rider ${rider.fullName}`);
+            } catch (pushError) {
+                console.error('⚠️ Push failed:', pushError.message);
+            }
+        }
+
         // Generate 4-digit PIN
         const deliveryPIN = String(Math.floor(1000 + Math.random() * 9000));
         console.log(`🔑 Delivery PIN for order ${order._id}: ${deliveryPIN}`);
@@ -323,7 +362,7 @@ router.patch('/:id/assign-rider', auth, async (req, res) => {
 
         // ✅ Add delivery to rider's list
         rider.deliveries.push(order._id);
-        // ✅ REMOVED: rider.status = 'busy';  ← Allows multiple deliveries
+
         await rider.save();
 
         // ============================================================
@@ -338,20 +377,6 @@ router.patch('/:id/assign-rider', auth, async (req, res) => {
             }
         } catch (smsError) {
             console.error('⚠️ Failed to send PIN SMS:', smsError.message);
-        }
-
-        // ============================================================
-        // ✅ SEND PIN TO CUSTOMER VIA WHATSAPP
-        // ============================================================
-        try {
-            const shop = order.shopId;
-            if (shop && shop.phone) {
-                const waMessage = `📦 Restock Delivery PIN\n\nYour order #${order._id.slice(-6).toUpperCase()} is on its way!\n\n🔑 Delivery PIN: ${deliveryPIN}\n\nPlease give this PIN to your rider to confirm delivery.`;
-                await sendWhatsAppMessage(shop.phone, waMessage);
-                console.log(`📱 PIN WhatsApp sent to ${shop.phone}`);
-            }
-        } catch (waError) {
-            console.error('⚠️ Failed to send PIN WhatsApp:', waError.message);
         }
 
         res.json({
@@ -380,17 +405,17 @@ router.post('/:id/verify-pin', auth, async (req, res) => {
 
         // Check if order has a PIN
         if (!order.deliveryPIN) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'No delivery PIN set for this order' 
+            return res.status(400).json({
+                success: false,
+                error: 'No delivery PIN set for this order'
             });
         }
 
         // Verify the PIN
         if (order.deliveryPIN !== pin) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Invalid delivery PIN. Please try again.' 
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid delivery PIN. Please try again.'
             });
         }
 
@@ -415,8 +440,8 @@ router.post('/:id/verify-pin', auth, async (req, res) => {
             }
         }
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             message: '✅ Delivery confirmed! Order marked as delivered.',
             order
         });
@@ -429,7 +454,7 @@ router.post('/:id/verify-pin', auth, async (req, res) => {
 // ============================================================
 // DELETE ORDER - DELETE /api/orders/:id
 // ============================================================
-router.delete('/:id', auth,  async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
     try {
         const order = await Order.findByIdAndDelete(req.params.id);
         if (!order) {

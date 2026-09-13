@@ -313,3 +313,140 @@ if (checkAuth()) {
     // Auto-refresh every 30 seconds
     setInterval(fetchData, 30000);
 }
+
+// ============================================================
+// SHOW SECTION
+// ============================================================
+function showSection(section) {
+    const settingsSection = document.getElementById('settingsSection');
+    const statsContainer = document.getElementById('statsContainer');
+    const chartsSection = document.querySelector('.charts-section');
+    const statusSection = document.querySelector('.status-section');
+    const recentOrders = document.querySelector('.recent-orders');
+
+    if (section === 'settings') {
+        // Hide dashboard sections
+        if (statsContainer) statsContainer.style.display = 'none';
+        if (chartsSection) chartsSection.style.display = 'none';
+        if (statusSection) statusSection.style.display = 'none';
+        if (recentOrders) recentOrders.style.display = 'none';
+        
+        // Show settings
+        if (settingsSection) {
+            settingsSection.style.display = 'block';
+            loadAdminSettings();
+        }
+    } else {
+        // Hide settings
+        if (settingsSection) settingsSection.style.display = 'none';
+        
+        // Show dashboard sections
+        if (statsContainer) statsContainer.style.display = 'grid';
+        if (chartsSection) chartsSection.style.display = 'grid';
+        if (statusSection) statusSection.style.display = 'grid';
+        if (recentOrders) recentOrders.style.display = 'block';
+    }
+}
+
+// ============================================================
+// LOAD ADMIN SETTINGS
+// ============================================================
+async function loadAdminSettings() {
+    try {
+        // Update user stats
+        document.getElementById('totalShops').textContent = shops.length || 0;
+        document.getElementById('totalDistributors').textContent = distributors.length || 0;
+        document.getElementById('totalRiders').textContent = riders.length || 0;
+
+        // Load from localStorage (or backend later)
+        const settings = JSON.parse(localStorage.getItem('adminSettings') || '{}');
+        
+        if (settings.commission) document.getElementById('settingsCommission').value = settings.commission;
+        if (settings.deliveryFee) document.getElementById('settingsDefaultDeliveryFee').value = settings.deliveryFee;
+        if (settings.minOrder) document.getElementById('settingsMinOrder').value = settings.minOrder;
+        if (settings.platformName) document.getElementById('settingsPlatformName').value = settings.platformName;
+        
+        if (settings.bankDetails) {
+            document.getElementById('settingsBankName').value = settings.bankDetails.bankName || '';
+            document.getElementById('settingsAccountNumber').value = settings.bankDetails.accountNumber || '';
+            document.getElementById('settingsAccountName').value = settings.bankDetails.accountName || '';
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+}
+
+// ============================================================
+// SAVE PLATFORM SETTINGS
+// ============================================================
+function savePlatformSettings(event) {
+    event.preventDefault();
+    
+    const settings = {
+        commission: parseFloat(document.getElementById('settingsCommission').value) || 3,
+        deliveryFee: parseInt(document.getElementById('settingsDefaultDeliveryFee').value) || 1000,
+        minOrder: parseInt(document.getElementById('settingsMinOrder').value) || 5000,
+        platformName: document.getElementById('settingsPlatformName').value || 'Restock'
+    };
+    
+    localStorage.setItem('adminSettings', JSON.stringify(settings));
+    showToast('✅ Platform settings saved!');
+}
+
+// ============================================================
+// SAVE ADMIN BANK DETAILS
+// ============================================================
+function saveAdminBankDetails(event) {
+    event.preventDefault();
+    
+    const settings = JSON.parse(localStorage.getItem('adminSettings') || '{}');
+    settings.bankDetails = {
+        bankName: document.getElementById('settingsBankName').value,
+        accountNumber: document.getElementById('settingsAccountNumber').value,
+        accountName: document.getElementById('settingsAccountName').value
+    };
+    
+    localStorage.setItem('adminSettings', JSON.stringify(settings));
+    showToast('✅ Bank details saved!');
+}
+
+// ============================================================
+// SAVE ADMIN NOTIFICATIONS
+// ============================================================
+function saveAdminNotifications() {
+    const settings = JSON.parse(localStorage.getItem('adminSettings') || '{}');
+    settings.notifications = {
+        sms: document.getElementById('adminSmsNotifications').checked,
+        whatsapp: document.getElementById('adminWhatsappNotifications').checked
+    };
+    
+    localStorage.setItem('adminSettings', JSON.stringify(settings));
+    showToast('✅ Notification settings saved!');
+}
+
+// ============================================================
+// VIEW ALL USERS
+// ============================================================
+function viewAllUsers() {
+    showToast(`👥 ${shops.length} shops, ${distributors.length} distributors, ${riders.length} riders`);
+}
+
+// ============================================================
+// DEACTIVATE PLATFORM
+// ============================================================
+function deactivatePlatform() {
+    if (confirm('⚠️ Are you sure you want to deactivate the platform? All users will lose access.')) {
+        if (confirm('🚨 This is your last chance. Deactivate permanently?')) {
+            showToast('⚠️ Platform deactivation is not available in this version.');
+        }
+    }
+}
+
+// ============================================================
+// LOGOUT
+// ============================================================
+function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '../landing-page/index.html';
+}
