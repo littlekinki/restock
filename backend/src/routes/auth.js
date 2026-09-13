@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const Shop = require('../models/Shop');
 const Distributor = require('../models/Distributor');
 const Rider = require('../models/Rider');
+const auth = require('../middleware/auth'); 
 
 // ============================================================
 // REGISTER
