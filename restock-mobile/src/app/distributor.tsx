@@ -21,6 +21,7 @@ export default function DistributorScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ total: 0, pending: 0, confirmed: 0, delivered: 0 });
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
     loadUser();
@@ -45,7 +46,6 @@ export default function DistributorScreen() {
       
       if (data.success) {
         setOrders(data.orders || []);
-        // Calculate stats
         const total = data.orders.length;
         const pending = data.orders.filter(o => o.status === 'pending').length;
         const confirmed = data.orders.filter(o => o.status === 'confirmed').length;
@@ -72,49 +72,171 @@ export default function DistributorScreen() {
     loadOrders();
   };
 
-  const handleProducts = () => {
-  // Show products from the distributor
-  const token = AsyncStorage.getItem('token');
-  // For now, show a list of products from orders
-  const productNames = [...new Set(orders.map(o => 
-    o.items?.map(i => i.productName).join(', ')
-  ).filter(Boolean))].flat();
-  
-  Alert.alert(
-    '📦 Your Products',
-    productNames.length > 0 
-      ? productNames.slice(0, 10).join('\n') 
-      : 'No products added yet. Go to the web dashboard to add products.'
-  );
-};
+  const showProducts = () => {
+    const productNames = orders.reduce((acc, order) => {
+      (order.items || []).forEach(item => {
+        if (!acc.includes(item.productName)) {
+          acc.push(item.productName);
+        }
+      });
+      return acc;
+    }, []);
 
-const handleAnalytics = () => {
-  const total = orders.length;
-  const delivered = orders.filter(o => o.status === 'delivered').length;
-  const revenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-  
-  Alert.alert(
-    '📊 Your Analytics',
-    `📦 Total Orders: ${total}\n` +
-    `✅ Delivered: ${delivered}\n` +
-    `⏳ Pending: ${orders.filter(o => o.status === 'pending').length}\n` +
-    `💰 Total Revenue: ₦${revenue.toLocaleString()}`
-  );
-};
+    Alert.alert(
+      '📦 Your Products',
+      productNames.length > 0 
+        ? productNames.slice(0, 10).join('\n') 
+        : 'No products in recent orders.'
+    );
+  };
 
-const handlePayments = () => {
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-  const pendingPayments = orders
-    .filter(o => o.status === 'pending' || o.status === 'confirmed')
-    .reduce((sum, o) => sum + (o.total || 0), 0);
-  
-  Alert.alert(
-    '💰 Payments Summary',
-    `✅ Paid: ₦${(totalRevenue - pendingPayments).toLocaleString()}\n` +
-    `⏳ Pending: ₦${pendingPayments.toLocaleString()}\n` +
-    `📊 Total: ₦${totalRevenue.toLocaleString()}`
+  const showAnalytics = () => {
+    const total = orders.length;
+    const delivered = orders.filter(o => o.status === 'delivered').length;
+    const revenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+    
+    Alert.alert(
+      '📊 Your Analytics',
+      `📦 Total Orders: ${total}\n` +
+      `✅ Delivered: ${delivered}\n` +
+      `⏳ Pending: ${orders.filter(o => o.status === 'pending').length}\n` +
+      `💰 Total Revenue: ₦${revenue.toLocaleString()}`
+    );
+  };
+
+  const showPayments = () => {
+    const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const pendingPayments = orders
+      .filter(o => o.status === 'pending' || o.status === 'confirmed')
+      .reduce((sum, o) => sum + (o.total || 0), 0);
+    
+    Alert.alert(
+      '💰 Payments Summary',
+      `✅ Paid: ₦${(totalRevenue - pendingPayments).toLocaleString()}\n` +
+      `⏳ Pending: ₦${pendingPayments.toLocaleString()}\n` +
+      `📊 Total: ₦${totalRevenue.toLocaleString()}`
+    );
+  };
+
+  const renderDashboard = () => (
+    <>
+      <Text style={styles.title}>📦 Distributor Dashboard</Text>
+      <Text style={styles.subtitle}>Manage orders and inventory.</Text>
+
+      {/* Stats Cards */}
+      <View style={styles.statsGrid}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{stats.total}</Text>
+          <Text style={styles.statLabel}>Total Orders</Text>
+        </View>
+        <View style={[styles.statCard, styles.pendingCard]}>
+          <Text style={styles.statNumber}>{stats.pending}</Text>
+          <Text style={styles.statLabel}>Pending</Text>
+        </View>
+        <View style={[styles.statCard, styles.confirmedCard]}>
+          <Text style={styles.statNumber}>{stats.confirmed}</Text>
+          <Text style={styles.statLabel}>Confirmed</Text>
+        </View>
+        <View style={[styles.statCard, styles.deliveredCard]}>
+          <Text style={styles.statNumber}>{stats.delivered}</Text>
+          <Text style={styles.statLabel}>Delivered</Text>
+        </View>
+      </View>
+
+      {/* Quick Actions Grid */}
+      <View style={styles.grid}>
+        <TouchableOpacity style={styles.card} onPress={showProducts}>
+          <Text style={styles.cardIcon}>📦</Text>
+          <Text style={styles.cardTitle}>Products</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.card} onPress={showAnalytics}>
+          <Text style={styles.cardIcon}>📊</Text>
+          <Text style={styles.cardTitle}>Analytics</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.card} onPress={showPayments}>
+          <Text style={styles.cardIcon}>💰</Text>
+          <Text style={styles.cardTitle}>Payments</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.card} onPress={() => setActiveTab('settings')}>
+          <Text style={styles.cardIcon}>⚙️</Text>
+          <Text style={styles.cardTitle}>Settings</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Recent Orders */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🆕 Recent Orders</Text>
+        {loading ? (
+          <ActivityIndicator size="large" color="#01311F" style={styles.loader} />
+        ) : orders.length === 0 ? (
+          <Text style={styles.emptyText}>No orders yet.</Text>
+        ) : (
+          orders.slice(0, 5).map((order, index) => (
+            <View key={index} style={styles.orderItem}>
+              <Text style={styles.orderId}>#{order._id.slice(-6).toUpperCase()}</Text>
+              <Text style={styles.orderStatus}>{order.status?.toUpperCase()}</Text>
+              <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
+            </View>
+          ))
+        )}
+      </View>
+    </>
   );
-};
+
+  const renderSettings = () => (
+    <>
+      <Text style={styles.title}>⚙️ Settings</Text>
+      <Text style={styles.subtitle}>Manage your account preferences.</Text>
+
+      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Profile', 'Profile settings coming soon!')}>
+        <Text style={styles.settingsIcon}>👤</Text>
+        <View style={styles.settingsText}>
+          <Text style={styles.settingsTitle}>Profile Settings</Text>
+          <Text style={styles.settingsSubtitle}>Update your business information</Text>
+        </View>
+        <Text style={styles.settingsArrow}>→</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Address', 'Address settings coming soon!')}>
+        <Text style={styles.settingsIcon}>📍</Text>
+        <View style={styles.settingsText}>
+          <Text style={styles.settingsTitle}>Address Settings</Text>
+          <Text style={styles.settingsSubtitle}>Update your pickup address</Text>
+        </View>
+        <Text style={styles.settingsArrow}>→</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Password', 'Password settings coming soon!')}>
+        <Text style={styles.settingsIcon}>🔒</Text>
+        <View style={styles.settingsText}>
+          <Text style={styles.settingsTitle}>Change Password</Text>
+          <Text style={styles.settingsSubtitle}>Update your password</Text>
+        </View>
+        <Text style={styles.settingsArrow}>→</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Bank', 'Bank details settings coming soon!')}>
+        <Text style={styles.settingsIcon}>💰</Text>
+        <View style={styles.settingsText}>
+          <Text style={styles.settingsTitle}>Bank Details</Text>
+          <Text style={styles.settingsSubtitle}>Manage your payment information</Text>
+        </View>
+        <Text style={styles.settingsArrow}>→</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.settingsItem, styles.dangerItem]} onPress={() => Alert.alert('Warning', 'Account deactivation coming soon!')}>
+        <Text style={styles.settingsIcon}>⚠️</Text>
+        <View style={styles.settingsText}>
+          <Text style={[styles.settingsTitle, styles.dangerText]}>Deactivate Account</Text>
+          <Text style={styles.settingsSubtitle}>Permanently disable your account</Text>
+        </View>
+        <Text style={styles.settingsArrow}>→</Text>
+      </TouchableOpacity>
+    </>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -132,65 +254,31 @@ const handlePayments = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <Text style={styles.title}>📦 Distributor Dashboard</Text>
-        <Text style={styles.subtitle}>Manage orders and inventory.</Text>
-
-        {/* Stats Cards */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Total Orders</Text>
-          </View>
-          <View style={[styles.statCard, styles.pendingCard]}>
-            <Text style={styles.statNumber}>{stats.pending}</Text>
-            <Text style={styles.statLabel}>Pending</Text>
-          </View>
-          <View style={[styles.statCard, styles.confirmedCard]}>
-            <Text style={styles.statNumber}>{stats.confirmed}</Text>
-            <Text style={styles.statLabel}>Confirmed</Text>
-          </View>
-          <View style={[styles.statCard, styles.deliveredCard]}>
-            <Text style={styles.statNumber}>{stats.delivered}</Text>
-            <Text style={styles.statLabel}>Delivered</Text>
-          </View>
-        </View>
-
-        {/* Quick Actions Grid */}
-        <View style={styles.grid}>
-          <TouchableOpacity style={styles.card} onPress={handleProducts}>
-            <Text style={styles.cardIcon}>📦</Text>
-            <Text style={styles.cardTitle}>Products</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.card} onPress={handleAnalytics}>
-            <Text style={styles.cardIcon}>📊</Text>
-            <Text style={styles.cardTitle}>Analytics</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.card} onPress={handlePayments}>
-            <Text style={styles.cardIcon}>💰</Text>
-            <Text style={styles.cardTitle}>Payments</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Recent Orders */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🆕 Recent Orders</Text>
-          {loading ? (
-            <ActivityIndicator size="large" color="#01311F" style={styles.loader} />
-          ) : orders.length === 0 ? (
-            <Text style={styles.emptyText}>No orders yet.</Text>
-          ) : (
-            orders.slice(0, 5).map((order, index) => (
-              <View key={index} style={styles.orderItem}>
-                <Text style={styles.orderId}>#{order._id.slice(-6).toUpperCase()}</Text>
-                <Text style={styles.orderStatus}>{order.status?.toUpperCase()}</Text>
-                <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
-              </View>
-            ))
-          )}
-        </View>
+        {activeTab === 'dashboard' ? renderDashboard() : renderSettings()}
       </ScrollView>
+
+      {/* Bottom Tab Bar */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity 
+          style={[styles.tabItem, activeTab === 'dashboard' && styles.tabItemActive]}
+          onPress={() => setActiveTab('dashboard')}
+        >
+          <Text style={styles.tabIcon}>📊</Text>
+          <Text style={[styles.tabLabel, activeTab === 'dashboard' && styles.tabLabelActive]}>
+            Dashboard
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.tabItem, activeTab === 'settings' && styles.tabItemActive]}
+          onPress={() => setActiveTab('settings')}
+        >
+          <Text style={styles.tabIcon}>⚙️</Text>
+          <Text style={[styles.tabLabel, activeTab === 'settings' && styles.tabLabelActive]}>
+            Settings
+          </Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -206,6 +294,7 @@ const COLORS = {
   pending: '#E65100',
   confirmed: '#0D47A1',
   delivered: '#1B5E20',
+  danger: '#E17055',
 };
 
 const styles = StyleSheet.create({
@@ -238,7 +327,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   title: {
     fontSize: 24,
@@ -368,5 +457,78 @@ const styles = StyleSheet.create({
     color: COLORS.gray,
     textAlign: 'center',
     padding: 20,
+  },
+  // Settings styles
+  settingsItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  dangerItem: {
+    borderWidth: 1,
+    borderColor: COLORS.danger,
+  },
+  settingsIcon: {
+    fontSize: 24,
+    marginRight: 16,
+  },
+  settingsText: {
+    flex: 1,
+  },
+  settingsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  settingsSubtitle: {
+    fontSize: 13,
+    color: COLORS.gray,
+    marginTop: 2,
+  },
+  settingsArrow: {
+    fontSize: 20,
+    color: COLORS.gray,
+  },
+  dangerText: {
+    color: COLORS.danger,
+  },
+  // Tab bar
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.lightGray,
+    paddingVertical: 8,
+    paddingBottom: 20,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  tabItemActive: {
+    borderTopWidth: 3,
+    borderTopColor: COLORS.primary,
+    marginTop: -11,
+  },
+  tabIcon: {
+    fontSize: 24,
+  },
+  tabLabel: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginTop: 4,
+  },
+  tabLabelActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
   },
 });
