@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   TextInput,
+  Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -19,11 +20,13 @@ const API_URL = 'https://restock-backend-zkrx.onrender.com/api';
 export default function DistributorScreen() {
   const [user, setUser] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ total: 0, pending: 0, confirmed: 0, delivered: 0 });
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [products, setProducts] = useState([]);
+
+  // Product form state
   const [showProductForm, setShowProductForm] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: '',
@@ -34,6 +37,14 @@ export default function DistributorScreen() {
     stock: '',
   });
 
+  // Chat state
+  const [showChat, setShowChat] = useState(false);
+  const [chatOrderId, setChatOrderId] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [chatReceiver, setChatReceiver] = useState(null);
+
   useEffect(() => {
     loadUser();
     loadOrders();
@@ -42,11 +53,12 @@ export default function DistributorScreen() {
 
   const loadUser = async () => {
     const userData = await AsyncStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
+    if (userData) setUser(JSON.parse(userData));
   };
 
+  // ============================================================
+  // LOAD ORDERS
+  // ============================================================
   const loadOrders = async () => {
     setLoading(true);
     try {
@@ -55,7 +67,6 @@ export default function DistributorScreen() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      
       if (data.success) {
         setOrders(data.orders || []);
         const total = data.orders.length;
@@ -66,10 +77,34 @@ export default function DistributorScreen() {
       }
     } catch (error) {
       console.error('Error loading orders:', error);
-      Alert.alert('Error', 'Failed to load orders');
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  // ============================================================
+  // LOAD PRODUCTS
+  // ============================================================
+  const loadProducts = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+
+      const response = await fetch(`${API_URL}/distributors`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        const distributor = data.distributors.find(d => d._id === currentUser.id);
+        if (distributor && distributor.products) {
+          setProducts(distributor.products);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading products:', error);
     }
   };
 
@@ -82,35 +117,11 @@ export default function DistributorScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     loadOrders();
+    loadProducts();
   };
 
   // ============================================================
-  // LOAD PRODUCTS
-  // ============================================================
-  const loadProducts = async () => {
-    try {
-      const token = await AsyncStorage.getItem('token');
-      const userData = await AsyncStorage.getItem('user');
-      const currentUser = JSON.parse(userData);
-    
-      const response = await fetch(`${API_URL}/distributors`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        const distributor = data.distributors.find(d => d._id === currentUser.id);
-        if (distributor && distributor.products) {
-          setProducts(distributor.products);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading products:', error);
-    }
-  };
-
-  // ============================================================
-  // HANDLE ORDER PRESS (Confirm/View)
+  // CONFIRM ORDER
   // ============================================================
   const handleOrderPress = (order) => {
     if (order.status === 'pending') {
@@ -143,10 +154,7 @@ export default function DistributorScreen() {
       );
     }
   };
-  
-  // ============================================================
-  // CONFIRM ORDER
-  // ============================================================
+
   const confirmOrder = async (orderId) => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -156,12 +164,11 @@ export default function DistributorScreen() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 
-          status: 'confirmed', 
-          note: 'Order confirmed by distributor' 
+        body: JSON.stringify({
+          status: 'confirmed',
+          note: 'Order confirmed by distributor'
         })
       });
-      
       const data = await response.json();
       if (data.success) {
         Alert.alert('✅ Success', 'Order confirmed!');
@@ -170,7 +177,6 @@ export default function DistributorScreen() {
         Alert.alert('❌ Error', data.error || 'Failed to confirm order');
       }
     } catch (error) {
-      console.error('Confirm error:', error);
       Alert.alert('❌ Error', 'Could not confirm order');
     }
   };
@@ -181,43 +187,35 @@ export default function DistributorScreen() {
   const assignRider = async (orderId) => {
     try {
       const token = await AsyncStorage.getItem('token');
-      
-      // Fetch available riders
       const riderResponse = await fetch(`${API_URL}/riders`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const riderData = await riderResponse.json();
-      
+
       if (!riderData.success || riderData.riders.length === 0) {
         Alert.alert('⚠️ No Riders', 'There are no riders available. Please add a rider first.');
         return;
       }
-    
-      // Show rider selection
-      const riderNames = riderData.riders.map((r, i) => 
-        `${i + 1}. ${r.fullName} (${r.vehicleType || 'motorcycle'})`
-      ).join('\n');
-    
+
+      const riders = riderData.riders.slice(0, 3);
+      const buttons = riders.map((rider) => ({
+        text: `${rider.fullName} (${rider.vehicleType || 'motorcycle'})`,
+        onPress: () => doAssignRider(orderId, rider._id)
+      }));
+
       Alert.alert(
         '👤 Select Rider',
-        `Choose a rider for this order:\n\n${riderNames}`,
+        `Choose a rider for this order:`,
         [
           { text: 'Cancel', style: 'cancel' },
-          ...riderData.riders.slice(0, 3).map((rider) => ({
-            text: rider.fullName,
-            onPress: () => doAssignRider(orderId, rider._id)
-          }))
+          ...buttons
         ]
       );
     } catch (error) {
-      console.error('Assign rider error:', error);
       Alert.alert('❌ Error', 'Could not fetch riders');
     }
   };
 
-  // ============================================================
-  // DO ASSIGN RIDER
-  // ============================================================
   const doAssignRider = async (orderId, riderId) => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -229,7 +227,6 @@ export default function DistributorScreen() {
         },
         body: JSON.stringify({ riderId })
       });
-    
       const data = await response.json();
       if (data.success) {
         Alert.alert('✅ Success', 'Rider assigned! PIN sent to customer.');
@@ -238,7 +235,6 @@ export default function DistributorScreen() {
         Alert.alert('❌ Error', data.error || 'Failed to assign rider');
       }
     } catch (error) {
-      console.error('Assign rider error:', error);
       Alert.alert('❌ Error', 'Could not assign rider');
     }
   };
@@ -248,7 +244,7 @@ export default function DistributorScreen() {
   // ============================================================
   const saveNewProduct = async () => {
     const { name, category, price, unit, size, stock } = newProduct;
-  
+
     if (!name || !price || !stock) {
       Alert.alert('⚠️ Missing Fields', 'Please fill in product name, price, and stock.');
       return;
@@ -258,14 +254,13 @@ export default function DistributorScreen() {
       const token = await AsyncStorage.getItem('token');
       const userData = await AsyncStorage.getItem('user');
       const currentUser = JSON.parse(userData);
-    
-      // Get current distributor
+
       const distResponse = await fetch(`${API_URL}/distributors`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const distData = await distResponse.json();
       const distributor = distData.distributors.find(d => d._id === currentUser.id);
-    
+
       if (!distributor) {
         Alert.alert('❌ Error', 'Distributor not found');
         return;
@@ -301,35 +296,31 @@ export default function DistributorScreen() {
         Alert.alert('❌ Error', data.error || 'Failed to add product');
       }
     } catch (error) {
-      console.error('Save product error:', error);
       Alert.alert('❌ Error', 'Could not add product');
     }
   };
 
-  // ============================================================
-  // DELETE PRODUCT
-  // ============================================================
   const deleteProduct = async (index) => {
     Alert.alert(
       '🗑️ Delete Product',
       `Are you sure you want to delete "${products[index].name}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
               const token = await AsyncStorage.getItem('token');
               const userData = await AsyncStorage.getItem('user');
               const currentUser = JSON.parse(userData);
-            
+
               const distResponse = await fetch(`${API_URL}/distributors`, {
                 headers: { 'Authorization': `Bearer ${token}` }
               });
               const distData = await distResponse.json();
               const distributor = distData.distributors.find(d => d._id === currentUser.id);
-            
+
               const updatedProducts = distributor.products.filter((_, i) => i !== index);
 
               const response = await fetch(`${API_URL}/distributors/${distributor._id}`, {
@@ -347,7 +338,6 @@ export default function DistributorScreen() {
                 loadProducts();
               }
             } catch (error) {
-              console.error('Delete error:', error);
               Alert.alert('❌ Error', 'Could not delete product');
             }
           }
@@ -357,7 +347,76 @@ export default function DistributorScreen() {
   };
 
   // ============================================================
-  // SHOW PRODUCTS (with Add option)
+  // OPEN CHAT (Distributor chats with Shop)
+  // ============================================================
+  const openChat = async (order) => {
+    setChatOrderId(order._id);
+    setShowChat(true);
+
+    setChatReceiver({
+      id: order.shopId?._id || order.shopId,
+      role: 'shop',
+      name: order.shopId?.businessName || 'Shop'
+    });
+
+    await loadMessages(order._id);
+  };
+
+  // ============================================================
+  // LOAD MESSAGES
+  // ============================================================
+  const loadMessages = async (orderId) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/chat/order/${orderId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setChatMessages(data.messages || []);
+      }
+    } catch (error) {
+      console.error('Load messages error:', error);
+    }
+  };
+
+  // ============================================================
+  // SEND MESSAGE
+  // ============================================================
+  const sendMessage = async () => {
+    if (!chatInput.trim() || !chatReceiver) return;
+    setSendingMessage(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/chat/send`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          orderId: chatOrderId,
+          receiverId: chatReceiver.id,
+          receiverRole: chatReceiver.role,
+          message: chatInput.trim()
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setChatInput('');
+        await loadMessages(chatOrderId);
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to send');
+      }
+    } catch (error) {
+      Alert.alert('❌ Error', 'Could not send message');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  // ============================================================
+  // SHOW PRODUCTS
   // ============================================================
   const showProducts = () => {
     if (products.length === 0) {
@@ -371,8 +430,8 @@ export default function DistributorScreen() {
       );
       return;
     }
-    
-    const productList = products.slice(0, 5).map((p, i) => 
+
+    const productList = products.slice(0, 5).map((p, i) =>
       `${i + 1}. ${p.name} - ₦${p.price?.toLocaleString()}\n   📦 ${p.stock} in stock`
     ).join('\n\n');
 
@@ -385,11 +444,12 @@ export default function DistributorScreen() {
       ]
     );
   };
+
   const showAnalytics = () => {
     const total = orders.length;
     const delivered = orders.filter(o => o.status === 'delivered').length;
     const revenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-    
+
     Alert.alert(
       '📊 Your Analytics',
       `📦 Total Orders: ${total}\n` +
@@ -404,7 +464,7 @@ export default function DistributorScreen() {
     const pendingPayments = orders
       .filter(o => o.status === 'pending' || o.status === 'confirmed')
       .reduce((sum, o) => sum + (o.total || 0), 0);
-    
+
     Alert.alert(
       '💰 Payments Summary',
       `✅ Paid: ₦${(totalRevenue - pendingPayments).toLocaleString()}\n` +
@@ -418,10 +478,7 @@ export default function DistributorScreen() {
   // ============================================================
   const renderProductForm = () => (
     <>
-      <TouchableOpacity 
-        style={styles.backButton} 
-        onPress={() => setShowProductForm(false)}
-      >
+      <TouchableOpacity style={styles.backButton} onPress={() => setShowProductForm(false)}>
         <Text style={styles.backButtonText}>← Back</Text>
       </TouchableOpacity>
 
@@ -445,72 +502,66 @@ export default function DistributorScreen() {
           {['Noodles', 'Beverages', 'Food', 'Snacks', 'Other'].map((cat) => (
             <TouchableOpacity
               key={cat}
-              style={[
-                styles.categoryChip,
-                newProduct.category === cat && styles.categoryChipActive,
-              ]}
+              style={[styles.categoryChip, newProduct.category === cat && styles.categoryChipActive]}
               onPress={() => setNewProduct({ ...newProduct, category: cat })}
             >
-            <Text
-              style={[
-                styles.categoryChipText,
-                newProduct.category === cat && styles.categoryChipTextActive,
-              ]}
-            >
-              {cat}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text style={[styles.categoryChipText, newProduct.category === cat && styles.categoryChipTextActive]}>
+                {cat}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
-    </View>
 
-    <View style={styles.formGroup}>
-      <Text style={styles.formLabel}>Price (₦) *</Text>
-      <TextInput
-        style={styles.formInput}
-        placeholder="e.g., 14200"
-        placeholderTextColor="#ADB5BD"
-        keyboardType="numeric"
-        value={newProduct.price}
-        onChangeText={(text) => setNewProduct({ ...newProduct, price: text })}
-      />
-    </View>
+      <View style={styles.formGroup}>
+        <Text style={styles.formLabel}>Price (₦) *</Text>
+        <TextInput
+          style={styles.formInput}
+          placeholder="e.g., 14200"
+          placeholderTextColor="#ADB5BD"
+          keyboardType="numeric"
+          value={newProduct.price}
+          onChangeText={(text) => setNewProduct({ ...newProduct, price: text })}
+        />
+      </View>
 
-    <View style={styles.formGroup}>
-      <Text style={styles.formLabel}>Size Details</Text>
-      <TextInput
-        style={styles.formInput}
-        placeholder="e.g., 500g, 1kg, 12pcs"
-        placeholderTextColor="#ADB5BD"
-        value={newProduct.size}
-        onChangeText={(text) => setNewProduct({ ...newProduct, size: text })}
-      />
-    </View>
+      <View style={styles.formGroup}>
+        <Text style={styles.formLabel}>Size Details</Text>
+        <TextInput
+          style={styles.formInput}
+          placeholder="e.g., 500g, 1kg, 12pcs"
+          placeholderTextColor="#ADB5BD"
+          value={newProduct.size}
+          onChangeText={(text) => setNewProduct({ ...newProduct, size: text })}
+        />
+      </View>
 
-    <View style={styles.formGroup}>
-      <Text style={styles.formLabel}>Stock Quantity *</Text>
-      <TextInput
-        style={styles.formInput}
-        placeholder="e.g., 100"
-        placeholderTextColor="#ADB5BD"
-        keyboardType="numeric"
-        value={newProduct.stock}
-        onChangeText={(text) => setNewProduct({ ...newProduct, stock: text })}
-      />
-    </View>
+      <View style={styles.formGroup}>
+        <Text style={styles.formLabel}>Stock Quantity *</Text>
+        <TextInput
+          style={styles.formInput}
+          placeholder="e.g., 100"
+          placeholderTextColor="#ADB5BD"
+          keyboardType="numeric"
+          value={newProduct.stock}
+          onChangeText={(text) => setNewProduct({ ...newProduct, stock: text })}
+        />
+      </View>
 
-    <TouchableOpacity style={styles.saveButton} onPress={saveNewProduct}>
-      <Text style={styles.saveButtonText}>✅ Add Product</Text>
-    </TouchableOpacity>
-  </>
-);
+      <TouchableOpacity style={styles.saveButton} onPress={saveNewProduct}>
+        <Text style={styles.saveButtonText}>✅ Add Product</Text>
+      </TouchableOpacity>
+    </>
+  );
 
+  // ============================================================
+  // RENDER DASHBOARD
+  // ============================================================
   const renderDashboard = () => (
     <>
       <Text style={styles.title}>📦 Distributor Dashboard</Text>
       <Text style={styles.subtitle}>Manage orders and inventory.</Text>
 
-      {/* Stats Cards */}
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{stats.total}</Text>
@@ -530,7 +581,6 @@ export default function DistributorScreen() {
         </View>
       </View>
 
-      {/* Quick Actions Grid */}
       <View style={styles.grid}>
         <TouchableOpacity style={styles.card} onPress={showProducts}>
           <Text style={styles.cardIcon}>📦</Text>
@@ -553,37 +603,41 @@ export default function DistributorScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Recent Orders */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>🆕 Recent Orders</Text>
         {loading ? (
           <ActivityIndicator size="large" color="#01311F" style={styles.loader} />
         ) : orders.length === 0 ? (
-        <Text style={styles.emptyText}>No orders yet.</Text>
+          <Text style={styles.emptyText}>No orders yet.</Text>
         ) : (
           orders.slice(0, 5).map((order, index) => (
-            <TouchableOpacity
-              key={index} 
-              style={styles.orderItem}
-              onPress={() => handleOrderPress(order)}
-            >
-              <View>
+            <View key={index} style={styles.orderItem}>
+              <TouchableOpacity
+                style={{ flex: 1 }}
+                onPress={() => handleOrderPress(order)}
+              >
                 <Text style={styles.orderId}>#{order._id.slice(-6).toUpperCase()}</Text>
                 <Text style={styles.orderStatus}>{order.status?.toUpperCase()}</Text>
-              </View>
-              <View style={styles.orderRight}>
                 <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
-                {order.status === 'pending' && (
-                  <Text style={styles.confirmHint}>Tap to confirm →</Text>
-                )}
+              </TouchableOpacity>
+              <View style={styles.orderActions}>
+                <TouchableOpacity
+                  style={styles.chatButton}
+                  onPress={() => openChat(order)}
+                >
+                  <Text style={styles.chatButtonText}>💬</Text>
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
+            </View>
           ))
         )}
       </View>
     </>
   );
 
+  // ============================================================
+  // RENDER SETTINGS
+  // ============================================================
   const renderSettings = () => (
     <>
       <Text style={styles.title}>⚙️ Settings</Text>
@@ -646,42 +700,87 @@ export default function DistributorScreen() {
       </View>
 
       <ScrollView
-        style={styles.scrollView} 
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {showProductForm 
-          ? renderProductForm() 
-          : activeTab === 'dashboard' 
-            ? renderDashboard() 
+        {showProductForm
+          ? renderProductForm()
+          : activeTab === 'dashboard'
+            ? renderDashboard()
             : renderSettings()
         }
       </ScrollView>
-      {/* Bottom Tab Bar - Hidden when adding a product */}
+
       {!showProductForm && (
         <View style={styles.tabBar}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.tabItem, activeTab === 'dashboard' && styles.tabItemActive]}
             onPress={() => setActiveTab('dashboard')}
           >
             <Text style={styles.tabIcon}>📊</Text>
-            <Text style={[styles.tabLabel, activeTab === 'dashboard' && styles.tabLabelActive]}>
-              Dashboard
-            </Text>
+            <Text style={[styles.tabLabel, activeTab === 'dashboard' && styles.tabLabelActive]}>Dashboard</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.tabItem, activeTab === 'settings' && styles.tabItemActive]}
             onPress={() => setActiveTab('settings')}
           >
             <Text style={styles.tabIcon}>⚙️</Text>
-            <Text style={[styles.tabLabel, activeTab === 'settings' && styles.tabLabelActive]}>
-              Settings
-            </Text>
+            <Text style={[styles.tabLabel, activeTab === 'settings' && styles.tabLabelActive]}>Settings</Text>
           </TouchableOpacity>
         </View>
+      )}
+
+      {/* Chat Modal */}
+      {showChat && (
+        <Modal visible={showChat} animationType="slide" transparent={false}>
+          <SafeAreaView style={styles.chatContainer}>
+            <View style={styles.chatHeader}>
+              <TouchableOpacity onPress={() => setShowChat(false)}>
+                <Text style={styles.chatBack}>← Back</Text>
+              </TouchableOpacity>
+              <View style={styles.chatHeaderInfo}>
+                <Text style={styles.chatHeaderName}>{chatReceiver?.name || 'Chat'}</Text>
+                <Text style={styles.chatHeaderRole}>{chatReceiver?.role?.toUpperCase() || ''}</Text>
+              </View>
+              <View style={{ width: 60 }} />
+            </View>
+
+            <ScrollView style={styles.chatMessages} contentContainerStyle={{ padding: 16 }}>
+              {chatMessages.length === 0 ? (
+                <Text style={styles.chatEmpty}>No messages yet. Start the conversation!</Text>
+              ) : (
+                chatMessages.map((msg, index) => {
+                  const isMe = msg.senderId === user?.id;
+                  return (
+                    <View key={index} style={[styles.chatBubble, isMe ? styles.chatBubbleMe : styles.chatBubbleThem]}>
+                      {!isMe && <Text style={styles.chatBubbleName}>{msg.senderName}</Text>}
+                      <Text style={isMe ? styles.chatTextMe : styles.chatTextThem}>{msg.message}</Text>
+                      <Text style={styles.chatTime}>
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            <View style={styles.chatInputContainer}>
+              <TextInput
+                style={styles.chatInput}
+                placeholder="Type a message..."
+                placeholderTextColor="#ADB5BD"
+                value={chatInput}
+                onChangeText={setChatInput}
+                multiline
+              />
+              <TouchableOpacity style={styles.chatSendButton} onPress={sendMessage} disabled={sendingMessage}>
+                {sendingMessage ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.chatSendText}>Send</Text>}
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </Modal>
       )}
     </SafeAreaView>
   );
@@ -702,307 +801,82 @@ const COLORS = {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray,
-  },
-  welcome: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  logoutButton: {
-    padding: 8,
-  },
-  logoutText: {
-    fontSize: 24,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 100,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: COLORS.primary,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.gray,
-    marginBottom: 24,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 24,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: COLORS.white,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  pendingCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.pending,
-  },
-  confirmedCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.confirmed,
-  },
-  deliveredCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.delivered,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.gray,
-    marginTop: 4,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 24,
-  },
-  card: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: COLORS.white,
-    padding: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  section: {
-    backgroundColor: COLORS.white,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-    color: COLORS.primary,
-  },
-  loader: {
-    marginVertical: 20,
-  },
-  orderItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray,
-  },
-  orderId: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  orderStatus: {
-    fontSize: 12,
-    fontWeight: '600',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    backgroundColor: COLORS.lightGray,
-  },
-  orderTotal: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  emptyText: {
-    color: COLORS.gray,
-    textAlign: 'center',
-    padding: 20,
-  },
-  // Settings styles
-  settingsItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  dangerItem: {
-    borderWidth: 1,
-    borderColor: COLORS.danger,
-  },
-  settingsIcon: {
-    fontSize: 24,
-    marginRight: 16,
-  },
-  settingsText: {
-    flex: 1,
-  },
-  settingsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  settingsSubtitle: {
-    fontSize: 13,
-    color: COLORS.gray,
-    marginTop: 2,
-  },
-  settingsArrow: {
-    fontSize: 20,
-    color: COLORS.gray,
-  },
-  dangerText: {
-    color: COLORS.danger,
-  },
-  // Tab bar
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.white,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.lightGray,
-    paddingVertical: 8,
-    paddingBottom: 20,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  tabItemActive: {
-    borderTopWidth: 3,
-    borderTopColor: COLORS.primary,
-    marginTop: -11,
-  },
-  tabIcon: {
-    fontSize: 24,
-  },
-  tabLabel: {
-    fontSize: 12,
-    color: COLORS.gray,
-    marginTop: 4,
-  },
-  tabLabelActive: {
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  orderRight: {
-  alignItems: 'flex-end',
-},
-confirmHint: {
-  fontSize: 11,
-  color: COLORS.secondary,
-  fontWeight: '600',
-  marginTop: 4,
-},
-backButton: {
-  paddingVertical: 8,
-  marginBottom: 8,
-},
-backButtonText: {
-  color: COLORS.primary,
-  fontSize: 16,
-  fontWeight: '600',
-},
-formGroup: {
-  marginBottom: 16,
-},
-formLabel: {
-  fontSize: 14,
-  fontWeight: '600',
-  color: COLORS.primary,
-  marginBottom: 8,
-},
-formInput: {
-  backgroundColor: COLORS.white,
-  borderRadius: 12,
-  padding: 16,
-  borderWidth: 1,
-  borderColor: COLORS.lightGray,
-  fontSize: 16,
-  color: COLORS.primary,
-},
-categoryRow: {
-  flexDirection: 'row',
-  flexWrap: 'wrap',
-  gap: 8,
-},
-categoryChip: {
-  paddingHorizontal: 16,
-  paddingVertical: 8,
-  borderRadius: 20,
-  backgroundColor: COLORS.lightGray,
-},
-categoryChipActive: {
-  backgroundColor: COLORS.primary,
-},
-categoryChipText: {
-  fontSize: 13,
-  color: COLORS.gray,
-  fontWeight: '500',
-},
-categoryChipTextActive: {
-  color: COLORS.white,
-},
-saveButton: {
-  backgroundColor: COLORS.primary,
-  borderRadius: 12,
-  padding: 16,
-  alignItems: 'center',
-  marginTop: 16,
-},
-saveButtonText: {
-  color: COLORS.white,
-  fontSize: 16,
-  fontWeight: '600',
-},
+  container: { flex: 1, backgroundColor: COLORS.background },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },
+  welcome: { fontSize: 18, fontWeight: '700', color: COLORS.primary },
+  logoutButton: { padding: 8 },
+  logoutText: { fontSize: 24 },
+  scrollView: { flex: 1 },
+  scrollContent: { padding: 20, paddingBottom: 100 },
+  title: { fontSize: 24, fontWeight: '800', color: COLORS.primary, marginBottom: 8 },
+  subtitle: { fontSize: 14, color: COLORS.gray, marginBottom: 24 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
+  statCard: { flex: 1, minWidth: '45%', backgroundColor: COLORS.white, padding: 16, borderRadius: 12, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  pendingCard: { borderLeftWidth: 4, borderLeftColor: COLORS.pending },
+  confirmedCard: { borderLeftWidth: 4, borderLeftColor: COLORS.confirmed },
+  deliveredCard: { borderLeftWidth: 4, borderLeftColor: COLORS.delivered },
+  statNumber: { fontSize: 24, fontWeight: '700', color: COLORS.primary },
+  statLabel: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
+  card: { flex: 1, minWidth: '45%', backgroundColor: COLORS.white, padding: 20, borderRadius: 12, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  cardIcon: { fontSize: 32, marginBottom: 8 },
+  cardTitle: { fontSize: 14, fontWeight: '600', color: COLORS.primary },
+  section: { backgroundColor: COLORS.white, padding: 16, borderRadius: 12, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 12, color: COLORS.primary },
+  loader: { marginVertical: 20 },
+  orderItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },
+  orderId: { fontSize: 14, fontWeight: '600', color: COLORS.primary },
+  orderStatus: { fontSize: 12, fontWeight: '600', color: COLORS.gray, marginTop: 2 },
+  orderTotal: { fontSize: 14, fontWeight: '700', color: COLORS.primary, marginTop: 2 },
+  orderActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  chatButton: { backgroundColor: '#6C5CE7', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
+  chatButtonText: { color: '#FFFFFF', fontSize: 14 },
+  emptyText: { color: COLORS.gray, textAlign: 'center', padding: 20 },
+  settingsItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, padding: 16, borderRadius: 12, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  dangerItem: { borderWidth: 1, borderColor: COLORS.danger },
+  settingsIcon: { fontSize: 24, marginRight: 16 },
+  settingsText: { flex: 1 },
+  settingsTitle: { fontSize: 16, fontWeight: '600', color: COLORS.primary },
+  settingsSubtitle: { fontSize: 13, color: COLORS.gray, marginTop: 2 },
+  settingsArrow: { fontSize: 20, color: COLORS.gray },
+  dangerText: { color: COLORS.danger },
+  tabBar: { flexDirection: 'row', backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.lightGray, paddingVertical: 8, paddingBottom: 20 },
+  tabItem: { flex: 1, alignItems: 'center', paddingVertical: 8 },
+  tabItemActive: { borderTopWidth: 3, borderTopColor: COLORS.primary, marginTop: -11 },
+  tabIcon: { fontSize: 24 },
+  tabLabel: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
+  tabLabelActive: { color: COLORS.primary, fontWeight: '600' },
+  // Product form
+  backButton: { paddingVertical: 8, marginBottom: 8 },
+  backButtonText: { color: COLORS.primary, fontSize: 16, fontWeight: '600' },
+  formGroup: { marginBottom: 16 },
+  formLabel: { fontSize: 14, fontWeight: '600', color: COLORS.primary, marginBottom: 8 },
+  formInput: { backgroundColor: COLORS.white, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: COLORS.lightGray, fontSize: 16, color: COLORS.primary },
+  categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  categoryChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: COLORS.lightGray },
+  categoryChipActive: { backgroundColor: COLORS.primary },
+  categoryChipText: { fontSize: 13, color: COLORS.gray, fontWeight: '500' },
+  categoryChipTextActive: { color: COLORS.white },
+  saveButton: { backgroundColor: COLORS.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 16 },
+  saveButtonText: { color: COLORS.white, fontSize: 16, fontWeight: '600' },
+  // Chat
+  chatContainer: { flex: 1, backgroundColor: COLORS.background },
+  chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },
+  chatBack: { color: COLORS.primary, fontSize: 16, fontWeight: '600' },
+  chatHeaderInfo: { alignItems: 'center' },
+  chatHeaderName: { fontSize: 16, fontWeight: '700', color: COLORS.primary },
+  chatHeaderRole: { fontSize: 11, color: COLORS.gray, fontWeight: '600' },
+  chatMessages: { flex: 1 },
+  chatEmpty: { textAlign: 'center', color: COLORS.gray, marginTop: 40 },
+  chatBubble: { maxWidth: '80%', padding: 12, borderRadius: 12, marginBottom: 8 },
+  chatBubbleMe: { alignSelf: 'flex-end', backgroundColor: COLORS.primary },
+  chatBubbleThem: { alignSelf: 'flex-start', backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.lightGray },
+  chatBubbleName: { fontSize: 11, fontWeight: '700', color: COLORS.secondary, marginBottom: 4 },
+  chatTextMe: { color: COLORS.white, fontSize: 14 },
+  chatTextThem: { color: COLORS.primary, fontSize: 14 },
+  chatTime: { fontSize: 10, color: COLORS.gray, marginTop: 4, alignSelf: 'flex-end' },
+  chatInputContainer: { flexDirection: 'row', padding: 12, backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.lightGray, alignItems: 'flex-end' },
+  chatInput: { flex: 1, backgroundColor: COLORS.background, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, maxHeight: 100, borderWidth: 1, borderColor: COLORS.lightGray },
+  chatSendButton: { marginLeft: 8, backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20 },
+  chatSendText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
 });
