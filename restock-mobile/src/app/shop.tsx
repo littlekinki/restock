@@ -12,19 +12,51 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Rating } from '@kolking/react-native-rating';
 import { router } from 'expo-router';
 
 const API_URL = 'https://restock-backend-zkrx.onrender.com/api';
 
 export default function ShopScreen() {
   const [user, setUser] = useState(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Rating modal state
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [selectedOrderForRating, setSelectedOrderForRating] = useState(null);
+  const [distributorRating, setDistributorRating] = useState(0);
+  const [distributorReview, setDistributorReview] = useState('');
+  const [riderRating, setRiderRating] = useState(0);
+  const [riderReview, setRiderReview] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
+
+  // Dashboard data
   const [searchTerm, setSearchTerm] = useState('');
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({ total: 0, pending: 0, delivered: 0, spent: 0 });
+
+  // Settings data
+  const [profile, setProfile] = useState({
+    businessName: '',
+    ownerName: '',
+    phone: '',
+    email: '',
+    street: '',
+    city: '',
+    state: '',
+    landmark: '',
+  });
+  const [passwords, setPasswords] = useState({
+    current: '',
+    new: '',
+    confirm: '',
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -37,6 +69,9 @@ export default function ShopScreen() {
     if (userData) setUser(JSON.parse(userData));
   };
 
+  // ============================================================
+  // LOAD PRODUCTS
+  // ============================================================
   const loadProducts = async () => {
     setLoading(true);
     try {
@@ -64,6 +99,9 @@ export default function ShopScreen() {
     }
   };
 
+  // ============================================================
+  // LOAD ORDERS
+  // ============================================================
   const loadOrders = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -86,16 +124,37 @@ export default function ShopScreen() {
     }
   };
 
-  const handleSearch = () => {
-    if (!searchTerm.trim()) {
-      Alert.alert('Info', 'Please enter a product name to search');
-      return;
-    }
-    const results = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    if (results.length === 0) {
-      Alert.alert('No Results', `No products found for "${searchTerm}"`);
-    } else {
-      Alert.alert('Results Found', `${results.length} product(s) found for "${searchTerm}"`);
+  // ============================================================
+  // LOAD SETTINGS DATA
+  // ============================================================
+  const loadSettingsData = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+
+      const response = await fetch(`${API_URL}/shops`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        const shop = data.shops.find(s => s._id === currentUser.id);
+        if (shop) {
+          setProfile({
+            businessName: shop.businessName || '',
+            ownerName: shop.ownerName || '',
+            phone: shop.phone || '',
+            email: shop.email || '',
+            street: shop.address?.street || '',
+            city: shop.address?.city || '',
+            state: shop.address?.state || '',
+            landmark: shop.address?.landmark || '',
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
     }
   };
 
@@ -111,14 +170,197 @@ export default function ShopScreen() {
     loadOrders();
   };
 
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'settings') {
+      loadSettingsData();
+    }
+  };
+
+  // ============================================================
+  // SAVE PROFILE
+  // ============================================================
+  const saveProfile = async () => {
+    if (!profile.businessName || !profile.ownerName || !profile.phone) {
+      Alert.alert('⚠️ Missing Fields', 'Please fill in business name, owner name, and phone.');
+      return;
+    }
+
+    setSavingProfile(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+
+      const response = await fetch(`${API_URL}/shops/${currentUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          businessName: profile.businessName,
+          ownerName: profile.ownerName,
+          phone: profile.phone,
+          email: profile.email,
+          address: {
+            street: profile.street,
+            city: profile.city,
+            state: profile.state,
+            landmark: profile.landmark,
+          }
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        const updatedUser = {
+          ...currentUser,
+          name: profile.businessName,
+          phone: profile.phone
+        };
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+
+        Alert.alert('✅ Success', 'Profile saved successfully!');
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to save profile');
+      }
+    } catch (error) {
+      console.error('Save profile error:', error);
+      Alert.alert('❌ Error', 'Could not save profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  // ============================================================
+  // CHANGE PASSWORD
+  // ============================================================
+  const changePassword = async () => {
+    if (!passwords.current || !passwords.new || !passwords.confirm) {
+      Alert.alert('⚠️ Missing Fields', 'Please fill in all password fields.');
+      return;
+    }
+
+    if (passwords.new !== passwords.confirm) {
+      Alert.alert('⚠️ Error', 'New passwords do not match.');
+      return;
+    }
+
+    if (passwords.new.length < 6) {
+      Alert.alert('⚠️ Error', 'Password must be at least 6 characters.');
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+
+      const response = await fetch(`${API_URL}/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          role: 'shop',
+          currentPassword: passwords.current,
+          newPassword: passwords.new
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Success', 'Password changed successfully!');
+        setPasswords({ current: '', new: '', confirm: '' });
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to change password');
+      }
+    } catch (error) {
+      console.error('Change password error:', error);
+      Alert.alert('❌ Error', 'Could not change password');
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  // ============================================================
+  // SUBMIT RATING
+  // ============================================================
+  const submitRating = async () => {
+    if (!distributorRating && !riderRating) {
+      Alert.alert('⚠️ Missing Rating', 'Please rate the distributor or rider.');
+      return;
+    }
+
+    setSubmittingRating(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/orders/${selectedOrderForRating._id}/rate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          distributorRating: distributorRating || null,
+          distributorReview: distributorReview || '',
+          riderRating: riderRating || null,
+          riderReview: riderReview || ''
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Thank You!', 'Your rating has been submitted.');
+        setShowRatingModal(false);
+        setSelectedOrderForRating(null);
+        setDistributorRating(0);
+        setDistributorReview('');
+        setRiderRating(0);
+        setRiderReview('');
+        loadOrders();
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to submit rating');
+      }
+    } catch (error) {
+      console.error('Rating submission error:', error);
+      Alert.alert('❌ Error', 'Could not submit rating');
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
+  // ============================================================
+  // OPEN RATING MODAL
+  // ============================================================
+  const openRatingModal = (order) => {
+    setSelectedOrderForRating(order);
+    setDistributorRating(0);
+    setDistributorReview('');
+    setRiderRating(0);
+    setRiderReview('');
+    setShowRatingModal(true);
+  };
+
+  // ============================================================
+  // TRACK ORDER
+  // ============================================================
   const trackOrder = (orderId) => {
     router.push(`/tracking?orderId=${orderId}`);
   };
 
+  // ============================================================
+  // RENDER DASHBOARD
+  // ============================================================
   const renderDashboard = () => (
     <>
       <Text style={styles.title}>🏪 Shop Dashboard</Text>
-      <Text style={styles.subtitle}>Welcome to Restock! Start ordering products.</Text>
+      <Text style={styles.subtitle}>Welcome to Restock!</Text>
 
       {/* Stats Cards */}
       <View style={styles.statsGrid}>
@@ -145,13 +387,10 @@ export default function ShopScreen() {
         <TextInput
           style={styles.searchInput}
           placeholder="🔍 Search products..."
+          placeholderTextColor="#ADB5BD"
           value={searchTerm}
           onChangeText={setSearchTerm}
-          onSubmitEditing={handleSearch}
         />
-        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <Text style={styles.searchButtonText}>Search</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Orders Section */}
@@ -167,11 +406,24 @@ export default function ShopScreen() {
                 <Text style={styles.orderStatus}>{order.status?.toUpperCase()}</Text>
                 <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
               </View>
-              {(order.status === 'picked_up' || order.status === 'out_for_delivery') && (
-                <TouchableOpacity style={styles.trackButton} onPress={() => trackOrder(order._id)}>
-                  <Text style={styles.trackButtonText}>📍 Track</Text>
-                </TouchableOpacity>
-              )}
+              <View style={styles.orderActions}>
+                {order.status === 'delivered' && !order.isRated && (
+                  <TouchableOpacity
+                    style={styles.rateButton}
+                    onPress={() => openRatingModal(order)}
+                  >
+                    <Text style={styles.rateButtonText}>⭐ Rate</Text>
+                  </TouchableOpacity>
+                )}
+                {order.status === 'delivered' && order.isRated && (
+                  <Text style={styles.ratedText}>✅ Rated</Text>
+                )}
+                {(order.status === 'picked_up' || order.status === 'out_for_delivery') && (
+                  <TouchableOpacity style={styles.trackButton} onPress={() => trackOrder(order._id)}>
+                    <Text style={styles.trackButtonText}>📍 Track</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           ))
         )}
@@ -197,46 +449,178 @@ export default function ShopScreen() {
     </>
   );
 
+  // ============================================================
+  // RENDER SETTINGS
+  // ============================================================
   const renderSettings = () => (
     <>
       <Text style={styles.title}>⚙️ Settings</Text>
       <Text style={styles.subtitle}>Manage your shop preferences.</Text>
 
-      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Profile', 'Profile settings coming soon!')}>
-        <Text style={styles.settingsIcon}>👤</Text>
-        <View style={styles.settingsText}>
-          <Text style={styles.settingsTitle}>Profile Settings</Text>
-          <Text style={styles.settingsSubtitle}>Update your shop information</Text>
-        </View>
-        <Text style={styles.settingsArrow}>→</Text>
-      </TouchableOpacity>
+      {/* Profile Section */}
+      <View style={styles.settingsCard}>
+        <Text style={styles.settingsCardTitle}>👤 Profile Settings</Text>
 
-      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Address', 'Address settings coming soon!')}>
-        <Text style={styles.settingsIcon}>📍</Text>
-        <View style={styles.settingsText}>
-          <Text style={styles.settingsTitle}>Address Settings</Text>
-          <Text style={styles.settingsSubtitle}>Update your delivery address</Text>
-        </View>
-        <Text style={styles.settingsArrow}>→</Text>
-      </TouchableOpacity>
+        <Text style={styles.formLabel}>Business Name</Text>
+        <TextInput
+          style={styles.formInput}
+          value={profile.businessName}
+          onChangeText={(text) => setProfile({ ...profile, businessName: text })}
+          placeholder="Business name"
+          placeholderTextColor="#ADB5BD"
+        />
 
-      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Password', 'Password settings coming soon!')}>
-        <Text style={styles.settingsIcon}>🔒</Text>
-        <View style={styles.settingsText}>
-          <Text style={styles.settingsTitle}>Change Password</Text>
-          <Text style={styles.settingsSubtitle}>Update your password</Text>
-        </View>
-        <Text style={styles.settingsArrow}>→</Text>
-      </TouchableOpacity>
+        <Text style={styles.formLabel}>Owner Name</Text>
+        <TextInput
+          style={styles.formInput}
+          value={profile.ownerName}
+          onChangeText={(text) => setProfile({ ...profile, ownerName: text })}
+          placeholder="Owner name"
+          placeholderTextColor="#ADB5BD"
+        />
 
-      <TouchableOpacity style={[styles.settingsItem, styles.dangerItem]} onPress={() => Alert.alert('Warning', 'Account deactivation coming soon!')}>
-        <Text style={styles.settingsIcon}>⚠️</Text>
-        <View style={styles.settingsText}>
-          <Text style={[styles.settingsTitle, styles.dangerText]}>Deactivate Account</Text>
-          <Text style={styles.settingsSubtitle}>Permanently disable your account</Text>
+        <Text style={styles.formLabel}>Phone Number</Text>
+        <TextInput
+          style={styles.formInput}
+          value={profile.phone}
+          onChangeText={(text) => setProfile({ ...profile, phone: text })}
+          placeholder="Phone number"
+          placeholderTextColor="#ADB5BD"
+          keyboardType="phone-pad"
+        />
+
+        <Text style={styles.formLabel}>Email</Text>
+        <TextInput
+          style={styles.formInput}
+          value={profile.email}
+          onChangeText={(text) => setProfile({ ...profile, email: text })}
+          placeholder="Email address"
+          placeholderTextColor="#ADB5BD"
+          keyboardType="email-address"
+        />
+
+        <Text style={styles.formLabel}>Street Address</Text>
+        <TextInput
+          style={styles.formInput}
+          value={profile.street}
+          onChangeText={(text) => setProfile({ ...profile, street: text })}
+          placeholder="Street address"
+          placeholderTextColor="#ADB5BD"
+        />
+
+        <View style={styles.formRow}>
+          <View style={styles.formHalf}>
+            <Text style={styles.formLabel}>City</Text>
+            <TextInput
+              style={styles.formInput}
+              value={profile.city}
+              onChangeText={(text) => setProfile({ ...profile, city: text })}
+              placeholder="City"
+              placeholderTextColor="#ADB5BD"
+            />
+          </View>
+          <View style={styles.formHalf}>
+            <Text style={styles.formLabel}>State</Text>
+            <TextInput
+              style={styles.formInput}
+              value={profile.state}
+              onChangeText={(text) => setProfile({ ...profile, state: text })}
+              placeholder="State"
+              placeholderTextColor="#ADB5BD"
+            />
+          </View>
         </View>
-        <Text style={styles.settingsArrow}>→</Text>
-      </TouchableOpacity>
+
+        <Text style={styles.formLabel}>Landmark</Text>
+        <TextInput
+          style={styles.formInput}
+          value={profile.landmark}
+          onChangeText={(text) => setProfile({ ...profile, landmark: text })}
+          placeholder="Landmark"
+          placeholderTextColor="#ADB5BD"
+        />
+
+        <TouchableOpacity
+          style={styles.saveButton}
+          onPress={saveProfile}
+          disabled={savingProfile}
+        >
+          {savingProfile ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveButtonText}>💾 Save Profile</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Password Section */}
+      <View style={styles.settingsCard}>
+        <Text style={styles.settingsCardTitle}>🔒 Change Password</Text>
+
+        <Text style={styles.formLabel}>Current Password</Text>
+        <TextInput
+          style={styles.formInput}
+          value={passwords.current}
+          onChangeText={(text) => setPasswords({ ...passwords, current: text })}
+          placeholder="Current password"
+          placeholderTextColor="#ADB5BD"
+          secureTextEntry={!showPassword}
+        />
+
+        <Text style={styles.formLabel}>New Password</Text>
+        <TextInput
+          style={styles.formInput}
+          value={passwords.new}
+          onChangeText={(text) => setPasswords({ ...passwords, new: text })}
+          placeholder="New password"
+          placeholderTextColor="#ADB5BD"
+          secureTextEntry={!showPassword}
+        />
+
+        <Text style={styles.formLabel}>Confirm New Password</Text>
+        <View style={styles.passwordRow}>
+          <TextInput
+            style={styles.passwordInput}
+            value={passwords.confirm}
+            onChangeText={(text) => setPasswords({ ...passwords, confirm: text })}
+            placeholder="Confirm new password"
+            placeholderTextColor="#ADB5BD"
+            secureTextEntry={!showPassword}
+          />
+          <TouchableOpacity
+            style={styles.eyeButton}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '🙈'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={styles.saveButton}
+          onPress={changePassword}
+          disabled={savingPassword}
+        >
+          {savingPassword ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveButtonText}>🔒 Change Password</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Danger Zone */}
+      <View style={[styles.settingsCard, styles.dangerCard]}>
+        <Text style={[styles.settingsCardTitle, styles.dangerText]}>⚠️ Danger Zone</Text>
+        <Text style={styles.dangerSubtitle}>
+          Once you deactivate your account, there is no going back.
+        </Text>
+        <TouchableOpacity
+          style={styles.dangerButton}
+          onPress={() => Alert.alert('Warning', 'Account deactivation coming soon!')}
+        >
+          <Text style={styles.dangerButtonText}>🗑️ Deactivate Account</Text>
+        </TouchableOpacity>
+      </View>
     </>
   );
 
@@ -261,7 +645,7 @@ export default function ShopScreen() {
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tabItem, activeTab === 'dashboard' && styles.tabItemActive]}
-          onPress={() => setActiveTab('dashboard')}
+          onPress={() => handleTabChange('dashboard')}
         >
           <Text style={styles.tabIcon}>📊</Text>
           <Text style={[styles.tabLabel, activeTab === 'dashboard' && styles.tabLabelActive]}>Dashboard</Text>
@@ -269,12 +653,72 @@ export default function ShopScreen() {
 
         <TouchableOpacity
           style={[styles.tabItem, activeTab === 'settings' && styles.tabItemActive]}
-          onPress={() => setActiveTab('settings')}
+          onPress={() => handleTabChange('settings')}
         >
           <Text style={styles.tabIcon}>⚙️</Text>
           <Text style={[styles.tabLabel, activeTab === 'settings' && styles.tabLabelActive]}>Settings</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Rating Modal */}
+      {showRatingModal && selectedOrderForRating && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.ratingModal}>
+            <Text style={styles.ratingTitle}>Rate Your Experience</Text>
+            <Text style={styles.ratingSubtitle}>
+              Order #{selectedOrderForRating._id.slice(-6).toUpperCase()}
+            </Text>
+
+            {/* Distributor Rating */}
+            <View style={styles.ratingSection}>
+              <Text style={styles.ratingLabel}>📦 Distributor</Text>
+              <Rating size={36} rating={distributorRating} onChange={setDistributorRating} />
+              <TextInput
+                style={styles.reviewInput}
+                placeholder="Leave a comment (optional)"
+                placeholderTextColor="#ADB5BD"
+                value={distributorReview}
+                onChangeText={setDistributorReview}
+                multiline
+              />
+            </View>
+
+            {/* Rider Rating */}
+            <View style={styles.ratingSection}>
+              <Text style={styles.ratingLabel}>🏍️ Rider</Text>
+              <Rating size={36} rating={riderRating} onChange={setRiderRating} />
+              <TextInput
+                style={styles.reviewInput}
+                placeholder="Leave a comment (optional)"
+                placeholderTextColor="#ADB5BD"
+                value={riderReview}
+                onChangeText={setRiderReview}
+                multiline
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowRatingModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.submitButton}
+                onPress={submitRating}
+                disabled={submittingRating}
+              >
+                {submittingRating ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.submitButtonText}>Submit</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -310,10 +754,8 @@ const styles = StyleSheet.create({
   spentCard: { borderLeftWidth: 4, borderLeftColor: COLORS.spent },
   statNumber: { fontSize: 22, fontWeight: '700', color: COLORS.primary },
   statLabel: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
-  searchContainer: { flexDirection: 'row', gap: 8, marginBottom: 24 },
-  searchInput: { flex: 1, backgroundColor: COLORS.white, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: COLORS.lightGray, fontSize: 16 },
-  searchButton: { backgroundColor: COLORS.primary, paddingHorizontal: 20, borderRadius: 8, justifyContent: 'center' },
-  searchButtonText: { color: COLORS.white, fontWeight: '600' },
+  searchContainer: { marginBottom: 24 },
+  searchInput: { backgroundColor: COLORS.white, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: COLORS.lightGray, fontSize: 16, color: COLORS.primary },
   section: { backgroundColor: COLORS.white, padding: 16, borderRadius: 12, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 12, color: COLORS.primary },
   loader: { marginVertical: 20 },
@@ -321,25 +763,53 @@ const styles = StyleSheet.create({
   orderId: { fontSize: 14, fontWeight: '600', color: COLORS.primary },
   orderStatus: { fontSize: 12, fontWeight: '600', color: COLORS.gray, marginTop: 2 },
   orderTotal: { fontSize: 14, fontWeight: '700', color: COLORS.primary, marginTop: 2 },
+  orderActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   trackButton: { backgroundColor: COLORS.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6 },
   trackButtonText: { color: COLORS.white, fontSize: 12, fontWeight: '600' },
+  rateButton: { backgroundColor: '#FDCB6E', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6 },
+  rateButtonText: { color: '#2D3436', fontSize: 12, fontWeight: '700' },
+  ratedText: { color: COLORS.secondary, fontSize: 12, fontWeight: '600' },
   productItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },
-  productName: { fontSize: 16, fontWeight: '600' },
+  productName: { fontSize: 16, fontWeight: '600', color: COLORS.primary },
   productPrice: { fontSize: 14, fontWeight: '700', color: COLORS.secondary, marginTop: 2 },
   productDistributor: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
   emptyText: { color: COLORS.gray, textAlign: 'center', padding: 20 },
-  settingsItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, padding: 16, borderRadius: 12, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  dangerItem: { borderWidth: 1, borderColor: COLORS.danger },
-  settingsIcon: { fontSize: 24, marginRight: 16 },
-  settingsText: { flex: 1 },
-  settingsTitle: { fontSize: 16, fontWeight: '600', color: COLORS.primary },
-  settingsSubtitle: { fontSize: 13, color: COLORS.gray, marginTop: 2 },
-  settingsArrow: { fontSize: 20, color: COLORS.gray },
+  // Settings
+  settingsCard: { backgroundColor: COLORS.white, padding: 20, borderRadius: 12, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  settingsCardTitle: { fontSize: 18, fontWeight: '700', color: COLORS.primary, marginBottom: 16 },
+  formLabel: { fontSize: 13, fontWeight: '600', color: COLORS.primary, marginBottom: 6, marginTop: 8 },
+  formInput: { backgroundColor: COLORS.background, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: COLORS.lightGray, fontSize: 15, color: COLORS.primary },
+  formRow: { flexDirection: 'row', gap: 12 },
+  formHalf: { flex: 1 },
+  passwordRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, borderRadius: 10, borderWidth: 1, borderColor: COLORS.lightGray },
+  passwordInput: { flex: 1, padding: 14, fontSize: 15, color: COLORS.primary },
+  eyeButton: { padding: 14 },
+  eyeIcon: { fontSize: 20 },
+  saveButton: { backgroundColor: COLORS.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 20 },
+  saveButtonText: { color: COLORS.white, fontSize: 15, fontWeight: '700' },
+  dangerCard: { borderWidth: 1, borderColor: COLORS.danger },
   dangerText: { color: COLORS.danger },
+  dangerSubtitle: { fontSize: 13, color: COLORS.gray, marginBottom: 16 },
+  dangerButton: { backgroundColor: COLORS.danger, borderRadius: 12, padding: 14, alignItems: 'center' },
+  dangerButtonText: { color: COLORS.white, fontSize: 14, fontWeight: '700' },
+  // Tab bar
   tabBar: { flexDirection: 'row', backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.lightGray, paddingVertical: 8, paddingBottom: 20 },
   tabItem: { flex: 1, alignItems: 'center', paddingVertical: 8 },
   tabItemActive: { borderTopWidth: 3, borderTopColor: COLORS.primary, marginTop: -11 },
   tabIcon: { fontSize: 24 },
   tabLabel: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
   tabLabelActive: { color: COLORS.primary, fontWeight: '600' },
+  // Rating Modal
+  modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+  ratingModal: { backgroundColor: COLORS.white, borderRadius: 16, padding: 24, width: '90%', maxWidth: 400 },
+  ratingTitle: { fontSize: 20, fontWeight: '800', color: COLORS.primary, textAlign: 'center', marginBottom: 4 },
+  ratingSubtitle: { fontSize: 14, color: COLORS.gray, textAlign: 'center', marginBottom: 20 },
+  ratingSection: { marginBottom: 20, alignItems: 'center' },
+  ratingLabel: { fontSize: 15, fontWeight: '600', color: COLORS.primary, marginBottom: 8 },
+  reviewInput: { backgroundColor: COLORS.background, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: COLORS.lightGray, fontSize: 14, color: COLORS.primary, width: '100%', marginTop: 8, minHeight: 60 },
+  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  cancelButton: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: COLORS.lightGray, alignItems: 'center' },
+  cancelButtonText: { color: COLORS.gray, fontWeight: '600' },
+  submitButton: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: 'center' },
+  submitButtonText: { color: COLORS.white, fontWeight: '700' },
 });

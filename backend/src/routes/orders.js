@@ -64,9 +64,7 @@ router.post('/', auth, async (req, res) => {
         await order.save();
         console.log('✅ Order created:', order._id);
 
-        // ============================================================
         // ✅ SEND SMS NOTIFICATION
-        // ============================================================
         try {
             await smsService.notifyShopOrderUpdate(order, 'pending');
             console.log(`📱 SMS notification sent for order ${order._id}`);
@@ -74,9 +72,7 @@ router.post('/', auth, async (req, res) => {
             console.error('⚠️ SMS notification failed:', smsError.message);
         }
 
-        // ============================================================
         // ✅ SCHEDULE AUTO-CALL TO DISTRIBUTOR (AFTER 5 MINUTES)
-        // ============================================================
         setTimeout(async () => {
             try {
                 const freshOrder = await Order.findById(order._id).populate('distributorId');
@@ -223,9 +219,7 @@ router.patch('/:id/status', auth, async (req, res) => {
 
         await order.save();
 
-        // ============================================================
         // ✅ SEND SMS NOTIFICATION TO SHOP OWNER
-        // ============================================================
         try {
             await smsService.notifyShopOrderUpdate(order, status);
             console.log(`📱 SMS notification sent for order ${order._id}`);
@@ -233,9 +227,7 @@ router.patch('/:id/status', auth, async (req, res) => {
             console.error('⚠️ SMS notification failed:', smsError.message);
         }
 
-        // ============================================================
         // ✅ SEND PUSH NOTIFICATION TO SHOP OWNER
-        // ============================================================
         try {
             const shop = await Shop.findById(order.shopId);
             if (shop && shop.pushToken) {
@@ -362,7 +354,6 @@ router.patch('/:id/assign-rider', auth, async (req, res) => {
 
         // ✅ Add delivery to rider's list
         rider.deliveries.push(order._id);
-
         await rider.save();
 
         // ============================================================
@@ -403,7 +394,6 @@ router.post('/:id/verify-pin', auth, async (req, res) => {
             return res.status(404).json({ success: false, error: 'Order not found' });
         }
 
-        // Check if order has a PIN
         if (!order.deliveryPIN) {
             return res.status(400).json({
                 success: false,
@@ -411,7 +401,6 @@ router.post('/:id/verify-pin', auth, async (req, res) => {
             });
         }
 
-        // Verify the PIN
         if (order.deliveryPIN !== pin) {
             return res.status(400).json({
                 success: false,
@@ -419,7 +408,6 @@ router.post('/:id/verify-pin', auth, async (req, res) => {
             });
         }
 
-        // Mark as delivered
         order.status = 'delivered';
         order.deliveryProof = 'pin_verified';
         order.deliveredAt = new Date();
@@ -429,7 +417,6 @@ router.post('/:id/verify-pin', auth, async (req, res) => {
         });
         await order.save();
 
-        // Update rider earnings
         if (order.riderId) {
             const rider = await Rider.findById(order.riderId);
             if (rider) {
@@ -447,6 +434,68 @@ router.post('/:id/verify-pin', auth, async (req, res) => {
         });
     } catch (error) {
         console.error('PIN verification error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ SUBMIT RATING - POST /api/orders/:id/rate
+// ============================================================
+router.post('/:id/rate', auth, async (req, res) => {
+    try {
+        const { distributorRating, distributorReview, riderRating, riderReview } = req.body;
+        const order = await Order.findById(req.params.id);
+
+        if (!order) {
+            return res.status(404).json({ success: false, error: 'Order not found' });
+        }
+
+        // Prevent duplicate ratings
+        if (order.isRated) {
+            return res.status(400).json({ success: false, error: 'Order has already been rated' });
+        }
+
+        // Save ratings to the order
+        order.distributorRating = distributorRating || null;
+        order.distributorReview = distributorReview || '';
+        order.riderRating = riderRating || null;
+        order.riderReview = riderReview || '';
+        order.isRated = true;
+
+        await order.save();
+
+        // Update Distributor Average Rating
+        if (order.distributorId && distributorRating) {
+            const distributorOrders = await Order.find({
+                distributorId: order.distributorId,
+                distributorRating: { $ne: null }
+            });
+
+            const avgRating = distributorOrders.reduce((sum, o) => sum + o.distributorRating, 0) / distributorOrders.length;
+
+            await Distributor.findByIdAndUpdate(order.distributorId, {
+                rating: Math.round(avgRating * 10) / 10
+            });
+        }
+
+        // Update Rider Average Rating
+        if (order.riderId && riderRating) {
+            const riderOrders = await Order.find({
+                riderId: order.riderId,
+                riderRating: { $ne: null }
+            });
+
+            const avgRating = riderOrders.reduce((sum, o) => sum + o.riderRating, 0) / riderOrders.length;
+
+            await Rider.findByIdAndUpdate(order.riderId, {
+                rating: Math.round(avgRating * 10) / 10
+            });
+        }
+
+        res.json({ success: true, message: 'Rating submitted successfully' });
+
+    } catch (error) {
+        console.error('Rating error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

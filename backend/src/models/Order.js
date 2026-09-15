@@ -57,6 +57,30 @@ const orderSchema = new mongoose.Schema({
     enum: ['pending', 'paid', 'failed'],
     default: 'pending'
   },
+  distributorRating: {
+    type: Number,
+    min: 1,
+    max: 5,
+    default: null
+  },
+  distributorReview: {
+    type: String,
+    default: ''
+  },
+  riderRating: {
+    type: Number,
+    min: 1,
+    max: 5,
+    default: null
+  },
+  riderReview: {
+    type: String,
+    default: ''
+  },
+  isRated: {
+    type: Boolean,
+    default: false
+  }
   trackingUpdates: [{
     status: String,
     timestamp: { type: Date, default: Date.now },
