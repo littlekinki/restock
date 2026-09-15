@@ -5,22 +5,58 @@ let orders = [];
 let allProducts = [];
 
 // ============================================================
-// LOAD SHOPS
+// LOAD SHOPS 
 // ============================================================
 async function loadShops() {
     try {
-        const res = await fetch(`${API_URL}/shops`);
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || 'null');
+
+        if (!token || !user) {
+            console.log('⚠️ No user logged in. Redirecting...');
+            window.location.href = '../landing-page/index.html';
+            return;
+        }
+
+        // Fetch the logged-in shop's data directly
+        const res = await fetch(`${API_URL}/shops`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         const data = await res.json();
+
         if (data.success) {
             shops = data.shops;
-            const select = document.getElementById('shopSelect');
-            select.innerHTML = '<option value="">-- Select a shop --</option>';
-            shops.forEach(shop => {
-                const opt = document.createElement('option');
-                opt.value = shop._id;
-                opt.textContent = shop.businessName;
-                select.appendChild(opt);
-            });
+            
+            // Auto-select the logged-in shop
+            const myShop = shops.find(s => s._id === user.id);
+            
+            if (myShop) {
+                selectedShopId = myShop._id;
+                console.log('✅ Auto-selected shop:', myShop.businessName);
+                
+                // ✅ Set the shop name in header (ADD HERE)
+                const shopNameEl = document.getElementById('currentShopName');
+                if (shopNameEl) {
+                    shopNameEl.textContent = myShop.businessName;
+                }
+                
+                // Hide the shop selector section
+                const selector = document.querySelector('.shop-selector');
+                if (selector) selector.style.display = 'none';
+                
+                // Load dashboard for this shop
+                loadDashboard();
+            } else {
+                // Fallback: show dropdown
+                const select = document.getElementById('shopSelect');
+                select.innerHTML = '<option value="">-- Select a shop --</option>';
+                shops.forEach(shop => {
+                    const opt = document.createElement('option');
+                    opt.value = shop._id;
+                    opt.textContent = shop.businessName;
+                    select.appendChild(opt);
+                });
+            }
         }
     } catch (err) {
         console.error('Error loading shops:', err);
@@ -28,36 +64,32 @@ async function loadShops() {
 }
 
 // ============================================================
-// LOAD DASHBOARD (UPDATED WITH DEBUG)
+// LOAD DASHBOARD
 // ============================================================
 async function loadDashboard() {
-    const select = document.getElementById('shopSelect');
-    selectedShopId = select.value;
+    // If no shop selected, try auto-selecting from user
+    if (!selectedShopId) {
+        const user = JSON.parse(localStorage.getItem('user') || 'null');
+        if (user && user.id) {
+            selectedShopId = user.id;
+        }
+    }
+
     if (!selectedShopId) {
         document.getElementById('orderList').innerHTML =
-            '<div class="empty-state">Select a shop to view orders</div>';
-        document.getElementById('topProducts').innerHTML =
-            '<div class="empty-state">Select a shop to see top products</div>';
+            '<div class="empty-state">No shop data available</div>';
         resetStats();
-        loadCategories();
         return;
     }
 
     try {
-        const res = await fetch(`${API_URL}/orders?shopId=${selectedShopId}`);
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/orders?shopId=${selectedShopId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         const data = await res.json();
         if (data.success) {
             orders = data.orders;
-            
-            console.log('📦 Orders loaded:', orders);
-            orders.forEach(order => {
-                if (order.deliveryPIN) {
-                    console.log(`🔑 Order ${order._id} has PIN: ${order.deliveryPIN}, status: ${order.status}`);
-                } else {
-                    console.log(`❌ Order ${order._id} has NO PIN, status: ${order.status}`);
-                }
-            });
-            
             const filtered = filterOrdersByDate(orders);
             renderOrders(filtered);
             updateStats(filtered);
@@ -68,7 +100,6 @@ async function loadDashboard() {
         console.error('Error loading orders:', err);
     }
 }
-
 // ============================================================
 // FILTER BY DATE
 // ============================================================
@@ -334,7 +365,9 @@ function exportCSV() {
 // GO TO SHOP
 // ============================================================
 function goToShop() {
-    window.location.href = '../shop-app/index.html';
+    const port = window.location.port || '5500';
+    const hostname = window.location.hostname;
+    window.location.href = `http://${hostname}:${port}/shop-app/index.html`;
 }
 
 // ============================================================
@@ -387,23 +420,23 @@ loadShops();
 // ============================================================
 function showSection(section) {
     const settingsSection = document.getElementById('settingsSection');
-    const ordersSection = document.querySelector('.orders-section');
-    const statsContainer = document.getElementById('statsContainer');
+    const dashboardSection = document.getElementById('dashboardSection');
 
-    // Hide all sections first
-    if (settingsSection) settingsSection.style.display = 'none';
-    if (ordersSection) ordersSection.style.display = 'block';
-    if (statsContainer) statsContainer.style.display = 'grid';
+    // ✅ Always keep the banner visible
+    const banner = document.querySelector('.shop-now-banner');
+    if (banner) banner.style.display = 'flex';
 
     if (section === 'settings') {
+        // Show settings, hide dashboard
+        if (dashboardSection) dashboardSection.style.display = 'none';
         if (settingsSection) {
             settingsSection.style.display = 'block';
-            if (ordersSection) ordersSection.style.display = 'none';
-            if (statsContainer) statsContainer.style.display = 'none';
             loadSettingsData();
         }
     } else {
-        // Show dashboard by default
+        // Show dashboard, hide settings
+        if (settingsSection) settingsSection.style.display = 'none';
+        if (dashboardSection) dashboardSection.style.display = 'block';
         loadDashboard();
     }
 }

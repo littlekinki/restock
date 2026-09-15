@@ -48,7 +48,7 @@ function getAuthHeaders() {
 }
 
 // ============================================================
-// LOAD SHOPS (UPDATED)
+// LOAD SHOPS 
 // ============================================================
 async function loadShops() {
     try {
@@ -532,7 +532,7 @@ function closeCart() {
 }
 
 // ============================================================
-// PLACE ORDER (UPDATED with auth)
+// PLACE ORDER 
 // ============================================================
 async function placeOrder() {
     if (!selectedShopId) {
@@ -643,6 +643,16 @@ async function placeOrder() {
 function closeConfirm() {
     document.getElementById('confirmModal').classList.remove('active');
 }
+
+// ============================================================
+// GO TO DASHBOARD  
+// ============================================================
+function goToDashboard() {
+    const port = window.location.port || '5500';
+    const hostname = window.location.hostname;
+    window.location.href = `http://${hostname}:${port}/shop-dashboard/index.html`;
+}
+
 
 // ============================================================
 // TOAST NOTIFICATIONS

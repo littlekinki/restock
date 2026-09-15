@@ -17,9 +17,16 @@ const API_URL = 'https://restock-backend-zkrx.onrender.com/api';
 
 export default function AdminScreen() {
   const [user, setUser] = useState(null);
-  const [stats, setStats] = useState({ orders: 0, shops: 0, distributors: 0, riders: 0, revenue: 0 });
+  const [stats, setStats] = useState({
+    orders: 0,
+    shops: 0,
+    distributors: 0,
+    riders: 0,
+    revenue: 0,
+  });
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
     loadUser();
@@ -37,7 +44,7 @@ export default function AdminScreen() {
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('token');
-      
+
       const [ordersRes, shopsRes, distributorsRes, ridersRes] = await Promise.all([
         fetch(`${API_URL}/orders`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_URL}/shops`, { headers: { 'Authorization': `Bearer ${token}` } }),
@@ -80,6 +87,123 @@ export default function AdminScreen() {
     loadStats();
   };
 
+  const renderDashboard = () => (
+    <>
+      <Text style={styles.title}>📊 Admin Dashboard</Text>
+      <Text style={styles.subtitle}>Overview of your Restock platform.</Text>
+
+      {/* Stats Cards */}
+      <View style={styles.statsGrid}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{stats.orders}</Text>
+          <Text style={styles.statLabel}>📦 Orders</Text>
+        </View>
+        <View style={[styles.statCard, styles.greenCard]}>
+          <Text style={styles.statNumber}>{stats.shops}</Text>
+          <Text style={styles.statLabel}>🏪 Shops</Text>
+        </View>
+        <View style={[styles.statCard, styles.blueCard]}>
+          <Text style={styles.statNumber}>{stats.distributors}</Text>
+          <Text style={styles.statLabel}>📦 Distributors</Text>
+        </View>
+        <View style={[styles.statCard, styles.orangeCard]}>
+          <Text style={styles.statNumber}>{stats.riders}</Text>
+          <Text style={styles.statLabel}>🏍️ Riders</Text>
+        </View>
+      </View>
+
+      {/* Revenue Card */}
+      <View style={styles.revenueCard}>
+        <Text style={styles.revenueLabel}>💰 Total Revenue</Text>
+        <Text style={styles.revenueValue}>₦{stats.revenue.toLocaleString()}</Text>
+      </View>
+
+      {/* Quick Actions */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>📋 Quick Actions</Text>
+
+        <TouchableOpacity style={styles.actionButton} onPress={() => Alert.alert('Manage Users', 'User management coming soon!')}>
+          <Text style={styles.actionIcon}>👤</Text>
+          <View style={styles.actionTextContainer}>
+            <Text style={styles.actionTitle}>Manage Users</Text>
+            <Text style={styles.actionSubtitle}>View and manage all users</Text>
+          </View>
+          <Text style={styles.actionArrow}>→</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.actionButton, styles.secondaryButton]} onPress={() => Alert.alert('View Reports', 'Reports coming soon!')}>
+          <Text style={styles.actionIcon}>📊</Text>
+          <View style={styles.actionTextContainer}>
+            <Text style={styles.actionTitle}>View Reports</Text>
+            <Text style={styles.actionSubtitle}>Analytics and business insights</Text>
+          </View>
+          <Text style={styles.actionArrow}>→</Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+
+  const renderSettings = () => (
+    <>
+      <Text style={styles.title}>⚙️ Settings</Text>
+      <Text style={styles.subtitle}>Manage platform preferences.</Text>
+
+      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Platform', 'Platform settings coming soon!')}>
+        <Text style={styles.settingsIcon}>⚙️</Text>
+        <View style={styles.settingsText}>
+          <Text style={styles.settingsTitle}>Platform Settings</Text>
+          <Text style={styles.settingsSubtitle}>Commission, delivery fee, etc.</Text>
+        </View>
+        <Text style={styles.settingsArrow}>→</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Users', `Shops: ${stats.shops}, Distributors: ${stats.distributors}, Riders: ${stats.riders}`)}>
+        <Text style={styles.settingsIcon}>👥</Text>
+        <View style={styles.settingsText}>
+          <Text style={styles.settingsTitle}>User Management</Text>
+          <Text style={styles.settingsSubtitle}>View all platform users</Text>
+        </View>
+        <Text style={styles.settingsArrow}>→</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Bank', 'Bank details settings coming soon!')}>
+        <Text style={styles.settingsIcon}>💰</Text>
+        <View style={styles.settingsText}>
+          <Text style={styles.settingsTitle}>Bank Details</Text>
+          <Text style={styles.settingsSubtitle}>Manage platform payment account</Text>
+        </View>
+        <Text style={styles.settingsArrow}>→</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Notifications', 'Notification settings coming soon!')}>
+        <Text style={styles.settingsIcon}>🔔</Text>
+        <View style={styles.settingsText}>
+          <Text style={styles.settingsTitle}>Notifications</Text>
+          <Text style={styles.settingsSubtitle}>SMS and WhatsApp settings</Text>
+        </View>
+        <Text style={styles.settingsArrow}>→</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Maintenance', 'Maintenance mode coming soon!')}>
+        <Text style={styles.settingsIcon}>🔧</Text>
+        <View style={styles.settingsText}>
+          <Text style={styles.settingsTitle}>Maintenance Mode</Text>
+          <Text style={styles.settingsSubtitle}>Temporarily disable platform</Text>
+        </View>
+        <Text style={styles.settingsArrow}>→</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.settingsItem, styles.dangerItem]} onPress={() => Alert.alert('Warning', 'Platform deactivation coming soon!')}>
+        <Text style={styles.settingsIcon}>⚠️</Text>
+        <View style={styles.settingsText}>
+          <Text style={[styles.settingsTitle, styles.dangerText]}>Deactivate Platform</Text>
+          <Text style={styles.settingsSubtitle}>Permanently disable the platform</Text>
+        </View>
+        <Text style={styles.settingsArrow}>→</Text>
+      </TouchableOpacity>
+    </>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -89,50 +213,34 @@ export default function AdminScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <Text style={styles.title}>📊 Admin Dashboard</Text>
-        <Text style={styles.subtitle}>Overview of your Restock platform.</Text>
-
-        {/* Stats Cards */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{stats.orders}</Text>
-            <Text style={styles.statLabel}>📦 Orders</Text>
-          </View>
-          <View style={[styles.statCard, styles.greenCard]}>
-            <Text style={styles.statNumber}>{stats.shops}</Text>
-            <Text style={styles.statLabel}>🏪 Shops</Text>
-          </View>
-          <View style={[styles.statCard, styles.blueCard]}>
-            <Text style={styles.statNumber}>{stats.distributors}</Text>
-            <Text style={styles.statLabel}>📦 Distributors</Text>
-          </View>
-          <View style={[styles.statCard, styles.orangeCard]}>
-            <Text style={styles.statNumber}>{stats.riders}</Text>
-            <Text style={styles.statLabel}>🏍️ Riders</Text>
-          </View>
-          <View style={[styles.statCard, styles.goldCard]}>
-            <Text style={styles.statNumber}>₦{stats.revenue.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>💰 Revenue</Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📋 Quick Actions</Text>
-          <TouchableOpacity style={styles.actionButton} onPress={() => Alert.alert('Manage Users', 'User management coming soon!')}>
-            <Text style={styles.actionText}>👤 Manage Users</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionButton, styles.secondaryButton]} onPress={() => Alert.alert('View Reports', 'Reports coming soon!')}>
-            <Text style={styles.actionText}>📊 View Reports</Text>
-          </TouchableOpacity>
-        </View>
+        {loading ? (
+          <ActivityIndicator size="large" color="#01311F" style={styles.loader} />
+        ) : activeTab === 'dashboard' ? renderDashboard() : renderSettings()}
       </ScrollView>
+
+      {/* Bottom Tab Bar */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tabItem, activeTab === 'dashboard' && styles.tabItemActive]}
+          onPress={() => setActiveTab('dashboard')}
+        >
+          <Text style={styles.tabIcon}>📊</Text>
+          <Text style={[styles.tabLabel, activeTab === 'dashboard' && styles.tabLabelActive]}>Dashboard</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabItem, activeTab === 'settings' && styles.tabItemActive]}
+          onPress={() => setActiveTab('settings')}
+        >
+          <Text style={styles.tabIcon}>⚙️</Text>
+          <Text style={[styles.tabLabel, activeTab === 'settings' && styles.tabLabelActive]}>Settings</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -149,6 +257,7 @@ const COLORS = {
   blue: '#0D47A1',
   orange: '#E65100',
   gold: '#F57F17',
+  danger: '#E17055',
 };
 
 const styles = StyleSheet.create({
@@ -181,7 +290,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   title: {
     fontSize: 24,
@@ -194,11 +303,14 @@ const styles = StyleSheet.create({
     color: COLORS.gray,
     marginBottom: 24,
   },
+  loader: {
+    marginVertical: 40,
+  },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   statCard: {
     flex: 1,
@@ -225,10 +337,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: COLORS.orange,
   },
-  goldCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.gold,
-  },
   statNumber: {
     fontSize: 24,
     fontWeight: '700',
@@ -239,10 +347,34 @@ const styles = StyleSheet.create({
     color: COLORS.gray,
     marginTop: 4,
   },
+  revenueCard: {
+    backgroundColor: COLORS.primary,
+    padding: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  revenueLabel: {
+    fontSize: 14,
+    color: COLORS.white,
+    opacity: 0.8,
+  },
+  revenueValue: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: COLORS.white,
+    marginTop: 8,
+  },
   section: {
     backgroundColor: COLORS.white,
     padding: 16,
     borderRadius: 12,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -256,21 +388,107 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: COLORS.primary,
     padding: 16,
-    borderRadius: 8,
-    marginBottom: 8,
-    alignItems: 'center',
+    borderRadius: 12,
+    marginBottom: 12,
   },
   secondaryButton: {
     backgroundColor: COLORS.secondary,
   },
-  actionText: {
-    color: COLORS.white,
-    fontWeight: '600',
-    fontSize: 16,
+  actionIcon: {
+    fontSize: 24,
+    marginRight: 16,
   },
-  loader: {
-    marginVertical: 20,
+  actionTextContainer: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  actionSubtitle: {
+    fontSize: 13,
+    color: COLORS.white,
+    opacity: 0.8,
+    marginTop: 2,
+  },
+  actionArrow: {
+    fontSize: 20,
+    color: COLORS.white,
+  },
+  settingsItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  dangerItem: {
+    borderWidth: 1,
+    borderColor: COLORS.danger,
+  },
+  settingsIcon: {
+    fontSize: 24,
+    marginRight: 16,
+  },
+  settingsText: {
+    flex: 1,
+  },
+  settingsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  settingsSubtitle: {
+    fontSize: 13,
+    color: COLORS.gray,
+    marginTop: 2,
+  },
+  settingsArrow: {
+    fontSize: 20,
+    color: COLORS.gray,
+  },
+  dangerText: {
+    color: COLORS.danger,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.lightGray,
+    paddingVertical: 8,
+    paddingBottom: 20,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  tabItemActive: {
+    borderTopWidth: 3,
+    borderTopColor: COLORS.primary,
+    marginTop: -11,
+  },
+  tabIcon: {
+    fontSize: 24,
+  },
+  tabLabel: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginTop: 4,
+  },
+  tabLabelActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
   },
 });

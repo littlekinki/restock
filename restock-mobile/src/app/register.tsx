@@ -26,7 +26,7 @@ export default function RegisterScreen() {
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // ← NEW
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleRegister = async () => {
     if (!businessName || !ownerName || !phone || !password) {
@@ -107,6 +107,7 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="Business Name"
+              placeholderTextColor="#ADB5BD"
               value={businessName}
               onChangeText={setBusinessName}
             />
@@ -114,6 +115,7 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="Full Name"
+              placeholderTextColor="#ADB5BD"
               value={ownerName}
               onChangeText={setOwnerName}
             />
@@ -121,6 +123,7 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="Phone Number"
+              placeholderTextColor="#ADB5BD"
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
@@ -129,6 +132,7 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="Shop Address (Street, Landmark)"
+              placeholderTextColor="#ADB5BD"
               value={address}
               onChangeText={setAddress}
             />
@@ -136,6 +140,7 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="City"
+              placeholderTextColor="#ADB5BD"
               value={city}
               onChangeText={setCity}
             />
@@ -143,6 +148,7 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="State"
+              placeholderTextColor="#ADB5BD"
               value={state}
               onChangeText={setState}
             />
@@ -152,6 +158,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.passwordInput}
                 placeholder="Password"
+                placeholderTextColor="#ADB5BD"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -266,8 +273,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.lightGray,
     fontSize: 16,
+    color: COLORS.primary,
   },
-  // ✅ NEW STYLES FOR PASSWORD
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -281,6 +288,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     fontSize: 16,
+    color: COLORS.primary,
   },
   eyeButton: {
     padding: 16,
