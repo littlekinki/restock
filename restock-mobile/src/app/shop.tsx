@@ -10,6 +10,7 @@ import {
   Alert,
   TextInput,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Rating } from '@kolking/react-native-rating';
@@ -23,7 +24,7 @@ export default function ShopScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Rating modal state
+  // Rating state
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedOrderForRating, setSelectedOrderForRating] = useState(null);
   const [distributorRating, setDistributorRating] = useState(0);
@@ -31,6 +32,14 @@ export default function ShopScreen() {
   const [riderRating, setRiderRating] = useState(0);
   const [riderReview, setRiderReview] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
+
+  // Chat state
+  const [showChat, setShowChat] = useState(false);
+  const [chatOrderId, setChatOrderId] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [chatReceiver, setChatReceiver] = useState(null);
 
   // Dashboard data
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,20 +49,10 @@ export default function ShopScreen() {
 
   // Settings data
   const [profile, setProfile] = useState({
-    businessName: '',
-    ownerName: '',
-    phone: '',
-    email: '',
-    street: '',
-    city: '',
-    state: '',
-    landmark: '',
+    businessName: '', ownerName: '', phone: '', email: '',
+    street: '', city: '', state: '', landmark: '',
   });
-  const [passwords, setPasswords] = useState({
-    current: '',
-    new: '',
-    confirm: '',
-  });
+  const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
@@ -132,12 +131,10 @@ export default function ShopScreen() {
       const token = await AsyncStorage.getItem('token');
       const userData = await AsyncStorage.getItem('user');
       const currentUser = JSON.parse(userData);
-
       const response = await fetch(`${API_URL}/shops`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-
       if (data.success) {
         const shop = data.shops.find(s => s._id === currentUser.id);
         if (shop) {
@@ -172,9 +169,7 @@ export default function ShopScreen() {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    if (tab === 'settings') {
-      loadSettingsData();
-    }
+    if (tab === 'settings') loadSettingsData();
   };
 
   // ============================================================
@@ -185,49 +180,35 @@ export default function ShopScreen() {
       Alert.alert('⚠️ Missing Fields', 'Please fill in business name, owner name, and phone.');
       return;
     }
-
     setSavingProfile(true);
     try {
       const token = await AsyncStorage.getItem('token');
       const userData = await AsyncStorage.getItem('user');
       const currentUser = JSON.parse(userData);
-
       const response = await fetch(`${API_URL}/shops/${currentUser.id}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           businessName: profile.businessName,
           ownerName: profile.ownerName,
           phone: profile.phone,
           email: profile.email,
           address: {
-            street: profile.street,
-            city: profile.city,
-            state: profile.state,
-            landmark: profile.landmark,
+            street: profile.street, city: profile.city,
+            state: profile.state, landmark: profile.landmark,
           }
         })
       });
-
       const data = await response.json();
       if (data.success) {
-        const updatedUser = {
-          ...currentUser,
-          name: profile.businessName,
-          phone: profile.phone
-        };
+        const updatedUser = { ...currentUser, name: profile.businessName, phone: profile.phone };
         await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
-
         Alert.alert('✅ Success', 'Profile saved successfully!');
       } else {
         Alert.alert('❌ Error', data.error || 'Failed to save profile');
       }
     } catch (error) {
-      console.error('Save profile error:', error);
       Alert.alert('❌ Error', 'Could not save profile');
     } finally {
       setSavingProfile(false);
@@ -242,37 +223,27 @@ export default function ShopScreen() {
       Alert.alert('⚠️ Missing Fields', 'Please fill in all password fields.');
       return;
     }
-
     if (passwords.new !== passwords.confirm) {
       Alert.alert('⚠️ Error', 'New passwords do not match.');
       return;
     }
-
     if (passwords.new.length < 6) {
       Alert.alert('⚠️ Error', 'Password must be at least 6 characters.');
       return;
     }
-
     setSavingPassword(true);
     try {
       const token = await AsyncStorage.getItem('token');
       const userData = await AsyncStorage.getItem('user');
       const currentUser = JSON.parse(userData);
-
       const response = await fetch(`${API_URL}/auth/change-password`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: currentUser.id,
-          role: 'shop',
-          currentPassword: passwords.current,
-          newPassword: passwords.new
+          userId: currentUser.id, role: 'shop',
+          currentPassword: passwords.current, newPassword: passwords.new
         })
       });
-
       const data = await response.json();
       if (data.success) {
         Alert.alert('✅ Success', 'Password changed successfully!');
@@ -281,7 +252,6 @@ export default function ShopScreen() {
         Alert.alert('❌ Error', data.error || 'Failed to change password');
       }
     } catch (error) {
-      console.error('Change password error:', error);
       Alert.alert('❌ Error', 'Could not change password');
     } finally {
       setSavingPassword(false);
@@ -296,16 +266,12 @@ export default function ShopScreen() {
       Alert.alert('⚠️ Missing Rating', 'Please rate the distributor or rider.');
       return;
     }
-
     setSubmittingRating(true);
     try {
       const token = await AsyncStorage.getItem('token');
       const response = await fetch(`${API_URL}/orders/${selectedOrderForRating._id}/rate`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           distributorRating: distributorRating || null,
           distributorReview: distributorReview || '',
@@ -313,7 +279,6 @@ export default function ShopScreen() {
           riderReview: riderReview || ''
         })
       });
-
       const data = await response.json();
       if (data.success) {
         Alert.alert('✅ Thank You!', 'Your rating has been submitted.');
@@ -328,16 +293,12 @@ export default function ShopScreen() {
         Alert.alert('❌ Error', data.error || 'Failed to submit rating');
       }
     } catch (error) {
-      console.error('Rating submission error:', error);
       Alert.alert('❌ Error', 'Could not submit rating');
     } finally {
       setSubmittingRating(false);
     }
   };
 
-  // ============================================================
-  // OPEN RATING MODAL
-  // ============================================================
   const openRatingModal = (order) => {
     setSelectedOrderForRating(order);
     setDistributorRating(0);
@@ -348,8 +309,80 @@ export default function ShopScreen() {
   };
 
   // ============================================================
-  // TRACK ORDER
+  // OPEN CHAT (Shop version - chats with distributor or rider)
   // ============================================================
+  const openChat = async (order) => {
+    setChatOrderId(order._id);
+    setShowChat(true);
+
+    // Shop chats with distributor first, then rider
+    if (order.distributorId) {
+      setChatReceiver({
+        id: order.distributorId._id || order.distributorId,
+        role: 'distributor',
+        name: order.distributorId?.businessName || 'Distributor'
+      });
+    } else if (order.riderId) {
+      setChatReceiver({
+        id: order.riderId._id || order.riderId,
+        role: 'rider',
+        name: order.riderId?.fullName || 'Rider'
+      });
+    }
+
+    await loadMessages(order._id);
+  };
+
+  // ============================================================
+  // LOAD MESSAGES
+  // ============================================================
+  const loadMessages = async (orderId) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/chat/order/${orderId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setChatMessages(data.messages || []);
+      }
+    } catch (error) {
+      console.error('Load messages error:', error);
+    }
+  };
+
+  // ============================================================
+  // SEND MESSAGE
+  // ============================================================
+  const sendMessage = async () => {
+    if (!chatInput.trim() || !chatReceiver) return;
+    setSendingMessage(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/chat/send`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: chatOrderId,
+          receiverId: chatReceiver.id,
+          receiverRole: chatReceiver.role,
+          message: chatInput.trim()
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setChatInput('');
+        await loadMessages(chatOrderId);
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to send');
+      }
+    } catch (error) {
+      Alert.alert('❌ Error', 'Could not send message');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   const trackOrder = (orderId) => {
     router.push(`/tracking?orderId=${orderId}`);
   };
@@ -362,7 +395,6 @@ export default function ShopScreen() {
       <Text style={styles.title}>🏪 Shop Dashboard</Text>
       <Text style={styles.subtitle}>Welcome to Restock!</Text>
 
-      {/* Stats Cards */}
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{stats.total}</Text>
@@ -382,7 +414,6 @@ export default function ShopScreen() {
         </View>
       </View>
 
-      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -393,7 +424,6 @@ export default function ShopScreen() {
         />
       </View>
 
-      {/* Orders Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>📋 Your Orders</Text>
         {orders.length === 0 ? (
@@ -407,20 +437,20 @@ export default function ShopScreen() {
                 <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
               </View>
               <View style={styles.orderActions}>
+                <TouchableOpacity style={styles.chatButton} onPress={() => openChat(order)}>
+                  <Text style={styles.chatButtonText}>💬</Text>
+                </TouchableOpacity>
                 {order.status === 'delivered' && !order.isRated && (
-                  <TouchableOpacity
-                    style={styles.rateButton}
-                    onPress={() => openRatingModal(order)}
-                  >
-                    <Text style={styles.rateButtonText}>⭐ Rate</Text>
+                  <TouchableOpacity style={styles.rateButton} onPress={() => openRatingModal(order)}>
+                    <Text style={styles.rateButtonText}>⭐</Text>
                   </TouchableOpacity>
                 )}
                 {order.status === 'delivered' && order.isRated && (
-                  <Text style={styles.ratedText}>✅ Rated</Text>
+                  <Text style={styles.ratedText}>✅</Text>
                 )}
                 {(order.status === 'picked_up' || order.status === 'out_for_delivery') && (
                   <TouchableOpacity style={styles.trackButton} onPress={() => trackOrder(order._id)}>
-                    <Text style={styles.trackButtonText}>📍 Track</Text>
+                    <Text style={styles.trackButtonText}>📍</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -429,7 +459,6 @@ export default function ShopScreen() {
         )}
       </View>
 
-      {/* Products Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>📦 Available Products</Text>
         {loading ? (
@@ -457,167 +486,79 @@ export default function ShopScreen() {
       <Text style={styles.title}>⚙️ Settings</Text>
       <Text style={styles.subtitle}>Manage your shop preferences.</Text>
 
-      {/* Profile Section */}
       <View style={styles.settingsCard}>
         <Text style={styles.settingsCardTitle}>👤 Profile Settings</Text>
-
         <Text style={styles.formLabel}>Business Name</Text>
-        <TextInput
-          style={styles.formInput}
-          value={profile.businessName}
+        <TextInput style={styles.formInput} value={profile.businessName}
           onChangeText={(text) => setProfile({ ...profile, businessName: text })}
-          placeholder="Business name"
-          placeholderTextColor="#ADB5BD"
-        />
-
+          placeholder="Business name" placeholderTextColor="#ADB5BD" />
         <Text style={styles.formLabel}>Owner Name</Text>
-        <TextInput
-          style={styles.formInput}
-          value={profile.ownerName}
+        <TextInput style={styles.formInput} value={profile.ownerName}
           onChangeText={(text) => setProfile({ ...profile, ownerName: text })}
-          placeholder="Owner name"
-          placeholderTextColor="#ADB5BD"
-        />
-
+          placeholder="Owner name" placeholderTextColor="#ADB5BD" />
         <Text style={styles.formLabel}>Phone Number</Text>
-        <TextInput
-          style={styles.formInput}
-          value={profile.phone}
+        <TextInput style={styles.formInput} value={profile.phone}
           onChangeText={(text) => setProfile({ ...profile, phone: text })}
-          placeholder="Phone number"
-          placeholderTextColor="#ADB5BD"
-          keyboardType="phone-pad"
-        />
-
+          placeholder="Phone number" placeholderTextColor="#ADB5BD" keyboardType="phone-pad" />
         <Text style={styles.formLabel}>Email</Text>
-        <TextInput
-          style={styles.formInput}
-          value={profile.email}
+        <TextInput style={styles.formInput} value={profile.email}
           onChangeText={(text) => setProfile({ ...profile, email: text })}
-          placeholder="Email address"
-          placeholderTextColor="#ADB5BD"
-          keyboardType="email-address"
-        />
-
+          placeholder="Email address" placeholderTextColor="#ADB5BD" keyboardType="email-address" />
         <Text style={styles.formLabel}>Street Address</Text>
-        <TextInput
-          style={styles.formInput}
-          value={profile.street}
+        <TextInput style={styles.formInput} value={profile.street}
           onChangeText={(text) => setProfile({ ...profile, street: text })}
-          placeholder="Street address"
-          placeholderTextColor="#ADB5BD"
-        />
-
+          placeholder="Street address" placeholderTextColor="#ADB5BD" />
         <View style={styles.formRow}>
           <View style={styles.formHalf}>
             <Text style={styles.formLabel}>City</Text>
-            <TextInput
-              style={styles.formInput}
-              value={profile.city}
+            <TextInput style={styles.formInput} value={profile.city}
               onChangeText={(text) => setProfile({ ...profile, city: text })}
-              placeholder="City"
-              placeholderTextColor="#ADB5BD"
-            />
+              placeholder="City" placeholderTextColor="#ADB5BD" />
           </View>
           <View style={styles.formHalf}>
             <Text style={styles.formLabel}>State</Text>
-            <TextInput
-              style={styles.formInput}
-              value={profile.state}
+            <TextInput style={styles.formInput} value={profile.state}
               onChangeText={(text) => setProfile({ ...profile, state: text })}
-              placeholder="State"
-              placeholderTextColor="#ADB5BD"
-            />
+              placeholder="State" placeholderTextColor="#ADB5BD" />
           </View>
         </View>
-
         <Text style={styles.formLabel}>Landmark</Text>
-        <TextInput
-          style={styles.formInput}
-          value={profile.landmark}
+        <TextInput style={styles.formInput} value={profile.landmark}
           onChangeText={(text) => setProfile({ ...profile, landmark: text })}
-          placeholder="Landmark"
-          placeholderTextColor="#ADB5BD"
-        />
-
-        <TouchableOpacity
-          style={styles.saveButton}
-          onPress={saveProfile}
-          disabled={savingProfile}
-        >
-          {savingProfile ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.saveButtonText}>💾 Save Profile</Text>
-          )}
+          placeholder="Landmark" placeholderTextColor="#ADB5BD" />
+        <TouchableOpacity style={styles.saveButton} onPress={saveProfile} disabled={savingProfile}>
+          {savingProfile ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveButtonText}>💾 Save Profile</Text>}
         </TouchableOpacity>
       </View>
 
-      {/* Password Section */}
       <View style={styles.settingsCard}>
         <Text style={styles.settingsCardTitle}>🔒 Change Password</Text>
-
         <Text style={styles.formLabel}>Current Password</Text>
-        <TextInput
-          style={styles.formInput}
-          value={passwords.current}
+        <TextInput style={styles.formInput} value={passwords.current}
           onChangeText={(text) => setPasswords({ ...passwords, current: text })}
-          placeholder="Current password"
-          placeholderTextColor="#ADB5BD"
-          secureTextEntry={!showPassword}
-        />
-
+          placeholder="Current password" placeholderTextColor="#ADB5BD" secureTextEntry={!showPassword} />
         <Text style={styles.formLabel}>New Password</Text>
-        <TextInput
-          style={styles.formInput}
-          value={passwords.new}
+        <TextInput style={styles.formInput} value={passwords.new}
           onChangeText={(text) => setPasswords({ ...passwords, new: text })}
-          placeholder="New password"
-          placeholderTextColor="#ADB5BD"
-          secureTextEntry={!showPassword}
-        />
-
+          placeholder="New password" placeholderTextColor="#ADB5BD" secureTextEntry={!showPassword} />
         <Text style={styles.formLabel}>Confirm New Password</Text>
         <View style={styles.passwordRow}>
-          <TextInput
-            style={styles.passwordInput}
-            value={passwords.confirm}
+          <TextInput style={styles.passwordInput} value={passwords.confirm}
             onChangeText={(text) => setPasswords({ ...passwords, confirm: text })}
-            placeholder="Confirm new password"
-            placeholderTextColor="#ADB5BD"
-            secureTextEntry={!showPassword}
-          />
-          <TouchableOpacity
-            style={styles.eyeButton}
-            onPress={() => setShowPassword(!showPassword)}
-          >
+            placeholder="Confirm new password" placeholderTextColor="#ADB5BD" secureTextEntry={!showPassword} />
+          <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword(!showPassword)}>
             <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '🙈'}</Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={styles.saveButton}
-          onPress={changePassword}
-          disabled={savingPassword}
-        >
-          {savingPassword ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.saveButtonText}>🔒 Change Password</Text>
-          )}
+        <TouchableOpacity style={styles.saveButton} onPress={changePassword} disabled={savingPassword}>
+          {savingPassword ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveButtonText}>🔒 Change Password</Text>}
         </TouchableOpacity>
       </View>
 
-      {/* Danger Zone */}
       <View style={[styles.settingsCard, styles.dangerCard]}>
         <Text style={[styles.settingsCardTitle, styles.dangerText]}>⚠️ Danger Zone</Text>
-        <Text style={styles.dangerSubtitle}>
-          Once you deactivate your account, there is no going back.
-        </Text>
-        <TouchableOpacity
-          style={styles.dangerButton}
-          onPress={() => Alert.alert('Warning', 'Account deactivation coming soon!')}
-        >
+        <Text style={styles.dangerSubtitle}>Once you deactivate your account, there is no going back.</Text>
+        <TouchableOpacity style={styles.dangerButton} onPress={() => Alert.alert('Warning', 'Account deactivation coming soon!')}>
           <Text style={styles.dangerButtonText}>🗑️ Deactivate Account</Text>
         </TouchableOpacity>
       </View>
@@ -641,7 +582,6 @@ export default function ShopScreen() {
         {activeTab === 'dashboard' ? renderDashboard() : renderSettings()}
       </ScrollView>
 
-      {/* Bottom Tab Bar */}
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tabItem, activeTab === 'dashboard' && styles.tabItemActive]}
@@ -650,7 +590,6 @@ export default function ShopScreen() {
           <Text style={styles.tabIcon}>📊</Text>
           <Text style={[styles.tabLabel, activeTab === 'dashboard' && styles.tabLabelActive]}>Dashboard</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
           style={[styles.tabItem, activeTab === 'settings' && styles.tabItemActive]}
           onPress={() => handleTabChange('settings')}
@@ -668,56 +607,76 @@ export default function ShopScreen() {
             <Text style={styles.ratingSubtitle}>
               Order #{selectedOrderForRating._id.slice(-6).toUpperCase()}
             </Text>
-
-            {/* Distributor Rating */}
             <View style={styles.ratingSection}>
               <Text style={styles.ratingLabel}>📦 Distributor</Text>
               <Rating size={36} rating={distributorRating} onChange={setDistributorRating} />
-              <TextInput
-                style={styles.reviewInput}
-                placeholder="Leave a comment (optional)"
-                placeholderTextColor="#ADB5BD"
-                value={distributorReview}
-                onChangeText={setDistributorReview}
-                multiline
-              />
+              <TextInput style={styles.reviewInput} placeholder="Leave a comment (optional)"
+                placeholderTextColor="#ADB5BD" value={distributorReview}
+                onChangeText={setDistributorReview} multiline />
             </View>
-
-            {/* Rider Rating */}
             <View style={styles.ratingSection}>
               <Text style={styles.ratingLabel}>🏍️ Rider</Text>
               <Rating size={36} rating={riderRating} onChange={setRiderRating} />
-              <TextInput
-                style={styles.reviewInput}
-                placeholder="Leave a comment (optional)"
-                placeholderTextColor="#ADB5BD"
-                value={riderReview}
-                onChangeText={setRiderReview}
-                multiline
-              />
+              <TextInput style={styles.reviewInput} placeholder="Leave a comment (optional)"
+                placeholderTextColor="#ADB5BD" value={riderReview}
+                onChangeText={setRiderReview} multiline />
             </View>
-
             <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setShowRatingModal(false)}
-              >
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setShowRatingModal(false)}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={submitRating}
-                disabled={submittingRating}
-              >
-                {submittingRating ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.submitButtonText}>Submit</Text>
-                )}
+              <TouchableOpacity style={styles.submitButton} onPress={submitRating} disabled={submittingRating}>
+                {submittingRating ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>Submit</Text>}
               </TouchableOpacity>
             </View>
           </View>
         </View>
+      )}
+
+      {/* Chat Modal */}
+      {showChat && (
+        <Modal visible={showChat} animationType="slide" transparent={false}>
+          <SafeAreaView style={styles.chatContainer}>
+            <View style={styles.chatHeader}>
+              <TouchableOpacity onPress={() => setShowChat(false)}>
+                <Text style={styles.chatBack}>← Back</Text>
+              </TouchableOpacity>
+              <View style={styles.chatHeaderInfo}>
+                <Text style={styles.chatHeaderName}>{chatReceiver?.name || 'Chat'}</Text>
+                <Text style={styles.chatHeaderRole}>{chatReceiver?.role?.toUpperCase() || ''}</Text>
+              </View>
+              <View style={{ width: 60 }} />
+            </View>
+
+            <ScrollView style={styles.chatMessages} contentContainerStyle={{ padding: 16 }}>
+              {chatMessages.length === 0 ? (
+                <Text style={styles.chatEmpty}>No messages yet. Start the conversation!</Text>
+              ) : (
+                chatMessages.map((msg, index) => {
+                  const isMe = msg.senderId === user?.id;
+                  return (
+                    <View key={index} style={[styles.chatBubble, isMe ? styles.chatBubbleMe : styles.chatBubbleThem]}>
+                      {!isMe && <Text style={styles.chatBubbleName}>{msg.senderName}</Text>}
+                      <Text style={isMe ? styles.chatTextMe : styles.chatTextThem}>{msg.message}</Text>
+                      <Text style={styles.chatTime}>
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            <View style={styles.chatInputContainer}>
+              <TextInput style={styles.chatInput} placeholder="Type a message..."
+                placeholderTextColor="#ADB5BD" value={chatInput}
+                onChangeText={setChatInput} multiline />
+              <TouchableOpacity style={styles.chatSendButton} onPress={sendMessage} disabled={sendingMessage}>
+                {sendingMessage ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.chatSendText}>Send</Text>}
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </Modal>
       )}
     </SafeAreaView>
   );
@@ -764,17 +723,18 @@ const styles = StyleSheet.create({
   orderStatus: { fontSize: 12, fontWeight: '600', color: COLORS.gray, marginTop: 2 },
   orderTotal: { fontSize: 14, fontWeight: '700', color: COLORS.primary, marginTop: 2 },
   orderActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  trackButton: { backgroundColor: COLORS.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6 },
-  trackButtonText: { color: COLORS.white, fontSize: 12, fontWeight: '600' },
-  rateButton: { backgroundColor: '#FDCB6E', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6 },
-  rateButtonText: { color: '#2D3436', fontSize: 12, fontWeight: '700' },
-  ratedText: { color: COLORS.secondary, fontSize: 12, fontWeight: '600' },
+  trackButton: { backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
+  trackButtonText: { color: COLORS.white, fontSize: 14 },
+  rateButton: { backgroundColor: '#FDCB6E', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
+  rateButtonText: { color: '#2D3436', fontSize: 14 },
+  ratedText: { color: COLORS.secondary, fontSize: 16, fontWeight: '600' },
+  chatButton: { backgroundColor: '#6C5CE7', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
+  chatButtonText: { color: '#FFFFFF', fontSize: 14 },
   productItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },
   productName: { fontSize: 16, fontWeight: '600', color: COLORS.primary },
   productPrice: { fontSize: 14, fontWeight: '700', color: COLORS.secondary, marginTop: 2 },
   productDistributor: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
   emptyText: { color: COLORS.gray, textAlign: 'center', padding: 20 },
-  // Settings
   settingsCard: { backgroundColor: COLORS.white, padding: 20, borderRadius: 12, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   settingsCardTitle: { fontSize: 18, fontWeight: '700', color: COLORS.primary, marginBottom: 16 },
   formLabel: { fontSize: 13, fontWeight: '600', color: COLORS.primary, marginBottom: 6, marginTop: 8 },
@@ -792,7 +752,6 @@ const styles = StyleSheet.create({
   dangerSubtitle: { fontSize: 13, color: COLORS.gray, marginBottom: 16 },
   dangerButton: { backgroundColor: COLORS.danger, borderRadius: 12, padding: 14, alignItems: 'center' },
   dangerButtonText: { color: COLORS.white, fontSize: 14, fontWeight: '700' },
-  // Tab bar
   tabBar: { flexDirection: 'row', backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.lightGray, paddingVertical: 8, paddingBottom: 20 },
   tabItem: { flex: 1, alignItems: 'center', paddingVertical: 8 },
   tabItemActive: { borderTopWidth: 3, borderTopColor: COLORS.primary, marginTop: -11 },
@@ -812,4 +771,24 @@ const styles = StyleSheet.create({
   cancelButtonText: { color: COLORS.gray, fontWeight: '600' },
   submitButton: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: 'center' },
   submitButtonText: { color: COLORS.white, fontWeight: '700' },
+  // Chat
+  chatContainer: { flex: 1, backgroundColor: COLORS.background },
+  chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },
+  chatBack: { color: COLORS.primary, fontSize: 16, fontWeight: '600' },
+  chatHeaderInfo: { alignItems: 'center' },
+  chatHeaderName: { fontSize: 16, fontWeight: '700', color: COLORS.primary },
+  chatHeaderRole: { fontSize: 11, color: COLORS.gray, fontWeight: '600' },
+  chatMessages: { flex: 1 },
+  chatEmpty: { textAlign: 'center', color: COLORS.gray, marginTop: 40 },
+  chatBubble: { maxWidth: '80%', padding: 12, borderRadius: 12, marginBottom: 8 },
+  chatBubbleMe: { alignSelf: 'flex-end', backgroundColor: COLORS.primary },
+  chatBubbleThem: { alignSelf: 'flex-start', backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.lightGray },
+  chatBubbleName: { fontSize: 11, fontWeight: '700', color: COLORS.secondary, marginBottom: 4 },
+  chatTextMe: { color: COLORS.white, fontSize: 14 },
+  chatTextThem: { color: COLORS.primary, fontSize: 14 },
+  chatTime: { fontSize: 10, color: COLORS.gray, marginTop: 4, alignSelf: 'flex-end' },
+  chatInputContainer: { flexDirection: 'row', padding: 12, backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.lightGray, alignItems: 'flex-end' },
+  chatInput: { flex: 1, backgroundColor: COLORS.background, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, maxHeight: 100, borderWidth: 1, borderColor: COLORS.lightGray },
+  chatSendButton: { marginLeft: 8, backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20 },
+  chatSendText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
 });
