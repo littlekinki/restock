@@ -57,6 +57,7 @@ const orderSchema = new mongoose.Schema({
     enum: ['pending', 'paid', 'failed'],
     default: 'pending'
   },
+  // ✅ Rating fields
   distributorRating: {
     type: Number,
     min: 1,
@@ -80,16 +81,13 @@ const orderSchema = new mongoose.Schema({
   isRated: {
     type: Boolean,
     default: false
-  }
+  },  // ← ✅ THE COMMA IS ADDED HERE
   trackingUpdates: [{
     status: String,
     timestamp: { type: Date, default: Date.now },
     note: String
   }],
-  
-  // ============================================================
-  // ✅ NEW: Delivery PIN Fields
-  // ============================================================
+  // ✅ Delivery PIN Fields
   deliveryPIN: {
     type: String,
     default: null
@@ -103,7 +101,6 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
-
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
