@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -22,10 +23,21 @@ export default function DistributorScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ total: 0, pending: 0, confirmed: 0, delivered: 0 });
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [products, setProducts] = useState([]);
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    category: 'Noodles',
+    price: '',
+    unit: 'carton',
+    size: '',
+    stock: '',
+  });
 
   useEffect(() => {
     loadUser();
     loadOrders();
+    loadProducts();
   }, []);
 
   const loadUser = async () => {
@@ -72,24 +84,307 @@ export default function DistributorScreen() {
     loadOrders();
   };
 
-  const showProducts = () => {
-    const productNames = orders.reduce((acc, order) => {
-      (order.items || []).forEach(item => {
-        if (!acc.includes(item.productName)) {
-          acc.push(item.productName);
-        }
+  // ============================================================
+  // LOAD PRODUCTS
+  // ============================================================
+  const loadProducts = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+    
+      const response = await fetch(`${API_URL}/distributors`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      return acc;
-    }, []);
+      const data = await response.json();
+      
+      if (data.success) {
+        const distributor = data.distributors.find(d => d._id === currentUser.id);
+        if (distributor && distributor.products) {
+          setProducts(distributor.products);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading products:', error);
+    }
+  };
 
+  // ============================================================
+  // HANDLE ORDER PRESS (Confirm/View)
+  // ============================================================
+  const handleOrderPress = (order) => {
+    if (order.status === 'pending') {
+      Alert.alert(
+        '📦 Confirm Order',
+        `Order #${order._id.slice(-6).toUpperCase()}\n` +
+        `Total: ₦${order.total?.toLocaleString()}\n\n` +
+        `Do you want to confirm this order?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: '✅ Confirm', onPress: () => confirmOrder(order._id) }
+        ]
+      );
+    } else if (order.status === 'confirmed') {
+      Alert.alert(
+        '📍 Assign Rider',
+        `Order #${order._id.slice(-6).toUpperCase()}\n\n` +
+        `This order is confirmed. Would you like to assign a rider?`,
+        [
+          { text: 'Later', style: 'cancel' },
+          { text: '📍 Assign Rider', onPress: () => assignRider(order._id) }
+        ]
+      );
+    } else {
+      Alert.alert(
+        '📦 Order Details',
+        `Order #${order._id.slice(-6).toUpperCase()}\n` +
+        `Status: ${order.status?.toUpperCase()}\n` +
+        `Total: ₦${order.total?.toLocaleString()}`
+      );
+    }
+  };
+  
+  // ============================================================
+  // CONFIRM ORDER
+  // ============================================================
+  const confirmOrder = async (orderId) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          status: 'confirmed', 
+          note: 'Order confirmed by distributor' 
+        })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Success', 'Order confirmed!');
+        loadOrders();
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to confirm order');
+      }
+    } catch (error) {
+      console.error('Confirm error:', error);
+      Alert.alert('❌ Error', 'Could not confirm order');
+    }
+  };
+
+  // ============================================================
+  // ASSIGN RIDER
+  // ============================================================
+  const assignRider = async (orderId) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      
+      // Fetch available riders
+      const riderResponse = await fetch(`${API_URL}/riders`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const riderData = await riderResponse.json();
+      
+      if (!riderData.success || riderData.riders.length === 0) {
+        Alert.alert('⚠️ No Riders', 'There are no riders available. Please add a rider first.');
+        return;
+      }
+    
+      // Show rider selection
+      const riderNames = riderData.riders.map((r, i) => 
+        `${i + 1}. ${r.fullName} (${r.vehicleType || 'motorcycle'})`
+      ).join('\n');
+    
+      Alert.alert(
+        '👤 Select Rider',
+        `Choose a rider for this order:\n\n${riderNames}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          ...riderData.riders.slice(0, 3).map((rider) => ({
+            text: rider.fullName,
+            onPress: () => doAssignRider(orderId, rider._id)
+          }))
+        ]
+      );
+    } catch (error) {
+      console.error('Assign rider error:', error);
+      Alert.alert('❌ Error', 'Could not fetch riders');
+    }
+  };
+
+  // ============================================================
+  // DO ASSIGN RIDER
+  // ============================================================
+  const doAssignRider = async (orderId, riderId) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/orders/${orderId}/assign-rider`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ riderId })
+      });
+    
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Success', 'Rider assigned! PIN sent to customer.');
+        loadOrders();
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to assign rider');
+      }
+    } catch (error) {
+      console.error('Assign rider error:', error);
+      Alert.alert('❌ Error', 'Could not assign rider');
+    }
+  };
+
+  // ============================================================
+  // SAVE NEW PRODUCT
+  // ============================================================
+  const saveNewProduct = async () => {
+    const { name, category, price, unit, size, stock } = newProduct;
+  
+    if (!name || !price || !stock) {
+      Alert.alert('⚠️ Missing Fields', 'Please fill in product name, price, and stock.');
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+    
+      // Get current distributor
+      const distResponse = await fetch(`${API_URL}/distributors`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const distData = await distResponse.json();
+      const distributor = distData.distributors.find(d => d._id === currentUser.id);
+    
+      if (!distributor) {
+        Alert.alert('❌ Error', 'Distributor not found');
+        return;
+      }
+
+      const productToAdd = {
+        name: name,
+        category: category,
+        price: parseFloat(price),
+        unit: unit,
+        size: size,
+        stock: parseInt(stock),
+      };
+
+      const updatedProducts = [...(distributor.products || []), productToAdd];
+
+      const response = await fetch(`${API_URL}/distributors/${distributor._id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ products: updatedProducts })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Success', 'Product added successfully!');
+        setShowProductForm(false);
+        setNewProduct({ name: '', category: 'Noodles', price: '', unit: 'carton', size: '', stock: '' });
+        loadProducts();
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to add product');
+      }
+    } catch (error) {
+      console.error('Save product error:', error);
+      Alert.alert('❌ Error', 'Could not add product');
+    }
+  };
+
+  // ============================================================
+  // DELETE PRODUCT
+  // ============================================================
+  const deleteProduct = async (index) => {
     Alert.alert(
-      '📦 Your Products',
-      productNames.length > 0 
-        ? productNames.slice(0, 10).join('\n') 
-        : 'No products in recent orders.'
+      '🗑️ Delete Product',
+      `Are you sure you want to delete "${products[index].name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('token');
+              const userData = await AsyncStorage.getItem('user');
+              const currentUser = JSON.parse(userData);
+            
+              const distResponse = await fetch(`${API_URL}/distributors`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+              const distData = await distResponse.json();
+              const distributor = distData.distributors.find(d => d._id === currentUser.id);
+            
+              const updatedProducts = distributor.products.filter((_, i) => i !== index);
+
+              const response = await fetch(`${API_URL}/distributors/${distributor._id}`, {
+                method: 'PUT',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ products: updatedProducts })
+              });
+
+              const data = await response.json();
+              if (data.success) {
+                Alert.alert('✅ Deleted', 'Product removed.');
+                loadProducts();
+              }
+            } catch (error) {
+              console.error('Delete error:', error);
+              Alert.alert('❌ Error', 'Could not delete product');
+            }
+          }
+        }
+      ]
     );
   };
 
+  // ============================================================
+  // SHOW PRODUCTS (with Add option)
+  // ============================================================
+  const showProducts = () => {
+    if (products.length === 0) {
+      Alert.alert(
+        '📦 No Products Yet',
+        'You haven\'t added any products. Would you like to add your first product?',
+        [
+          { text: 'Later', style: 'cancel' },
+          { text: '➕ Add Product', onPress: () => setShowProductForm(true) }
+        ]
+      );
+      return;
+    }
+    
+    const productList = products.slice(0, 5).map((p, i) => 
+      `${i + 1}. ${p.name} - ₦${p.price?.toLocaleString()}\n   📦 ${p.stock} in stock`
+    ).join('\n\n');
+
+    Alert.alert(
+      '📦 Your Products',
+      `${productList}\n\n${products.length > 5 ? `...and ${products.length - 5} more` : ''}`,
+      [
+        { text: 'Close', style: 'cancel' },
+        { text: '➕ Add Product', onPress: () => setShowProductForm(true) }
+      ]
+    );
+  };
   const showAnalytics = () => {
     const total = orders.length;
     const delivered = orders.filter(o => o.status === 'delivered').length;
@@ -117,6 +412,98 @@ export default function DistributorScreen() {
       `📊 Total: ₦${totalRevenue.toLocaleString()}`
     );
   };
+
+  // ============================================================
+  // RENDER PRODUCT FORM
+  // ============================================================
+  const renderProductForm = () => (
+    <>
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={() => setShowProductForm(false)}
+      >
+        <Text style={styles.backButtonText}>← Back</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.title}>➕ Add New Product</Text>
+      <Text style={styles.subtitle}>Fill in the details below.</Text>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.formLabel}>Product Name *</Text>
+        <TextInput
+          style={styles.formInput}
+          placeholder="e.g., Indomie Super Pack"
+          placeholderTextColor="#ADB5BD"
+          value={newProduct.name}
+          onChangeText={(text) => setNewProduct({ ...newProduct, name: text })}
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.formLabel}>Category</Text>
+        <View style={styles.categoryRow}>
+          {['Noodles', 'Beverages', 'Food', 'Snacks', 'Other'].map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              style={[
+                styles.categoryChip,
+                newProduct.category === cat && styles.categoryChipActive,
+              ]}
+              onPress={() => setNewProduct({ ...newProduct, category: cat })}
+            >
+            <Text
+              style={[
+                styles.categoryChipText,
+                newProduct.category === cat && styles.categoryChipTextActive,
+              ]}
+            >
+              {cat}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+
+    <View style={styles.formGroup}>
+      <Text style={styles.formLabel}>Price (₦) *</Text>
+      <TextInput
+        style={styles.formInput}
+        placeholder="e.g., 14200"
+        placeholderTextColor="#ADB5BD"
+        keyboardType="numeric"
+        value={newProduct.price}
+        onChangeText={(text) => setNewProduct({ ...newProduct, price: text })}
+      />
+    </View>
+
+    <View style={styles.formGroup}>
+      <Text style={styles.formLabel}>Size Details</Text>
+      <TextInput
+        style={styles.formInput}
+        placeholder="e.g., 500g, 1kg, 12pcs"
+        placeholderTextColor="#ADB5BD"
+        value={newProduct.size}
+        onChangeText={(text) => setNewProduct({ ...newProduct, size: text })}
+      />
+    </View>
+
+    <View style={styles.formGroup}>
+      <Text style={styles.formLabel}>Stock Quantity *</Text>
+      <TextInput
+        style={styles.formInput}
+        placeholder="e.g., 100"
+        placeholderTextColor="#ADB5BD"
+        keyboardType="numeric"
+        value={newProduct.stock}
+        onChangeText={(text) => setNewProduct({ ...newProduct, stock: text })}
+      />
+    </View>
+
+    <TouchableOpacity style={styles.saveButton} onPress={saveNewProduct}>
+      <Text style={styles.saveButtonText}>✅ Add Product</Text>
+    </TouchableOpacity>
+  </>
+);
 
   const renderDashboard = () => (
     <>
@@ -172,14 +559,25 @@ export default function DistributorScreen() {
         {loading ? (
           <ActivityIndicator size="large" color="#01311F" style={styles.loader} />
         ) : orders.length === 0 ? (
-          <Text style={styles.emptyText}>No orders yet.</Text>
+        <Text style={styles.emptyText}>No orders yet.</Text>
         ) : (
           orders.slice(0, 5).map((order, index) => (
-            <View key={index} style={styles.orderItem}>
-              <Text style={styles.orderId}>#{order._id.slice(-6).toUpperCase()}</Text>
-              <Text style={styles.orderStatus}>{order.status?.toUpperCase()}</Text>
-              <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
-            </View>
+            <TouchableOpacity
+              key={index} 
+              style={styles.orderItem}
+              onPress={() => handleOrderPress(order)}
+            >
+              <View>
+                <Text style={styles.orderId}>#{order._id.slice(-6).toUpperCase()}</Text>
+                <Text style={styles.orderStatus}>{order.status?.toUpperCase()}</Text>
+              </View>
+              <View style={styles.orderRight}>
+                <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
+                {order.status === 'pending' && (
+                  <Text style={styles.confirmHint}>Tap to confirm →</Text>
+                )}
+              </View>
+            </TouchableOpacity>
           ))
         )}
       </View>
@@ -247,38 +645,44 @@ export default function DistributorScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView} 
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {activeTab === 'dashboard' ? renderDashboard() : renderSettings()}
+        {showProductForm 
+          ? renderProductForm() 
+          : activeTab === 'dashboard' 
+            ? renderDashboard() 
+            : renderSettings()
+        }
       </ScrollView>
+      {/* Bottom Tab Bar - Hidden when adding a product */}
+      {!showProductForm && (
+        <View style={styles.tabBar}>
+          <TouchableOpacity 
+            style={[styles.tabItem, activeTab === 'dashboard' && styles.tabItemActive]}
+            onPress={() => setActiveTab('dashboard')}
+          >
+            <Text style={styles.tabIcon}>📊</Text>
+            <Text style={[styles.tabLabel, activeTab === 'dashboard' && styles.tabLabelActive]}>
+              Dashboard
+            </Text>
+          </TouchableOpacity>
 
-      {/* Bottom Tab Bar */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity 
-          style={[styles.tabItem, activeTab === 'dashboard' && styles.tabItemActive]}
-          onPress={() => setActiveTab('dashboard')}
-        >
-          <Text style={styles.tabIcon}>📊</Text>
-          <Text style={[styles.tabLabel, activeTab === 'dashboard' && styles.tabLabelActive]}>
-            Dashboard
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.tabItem, activeTab === 'settings' && styles.tabItemActive]}
-          onPress={() => setActiveTab('settings')}
-        >
-          <Text style={styles.tabIcon}>⚙️</Text>
-          <Text style={[styles.tabLabel, activeTab === 'settings' && styles.tabLabelActive]}>
-            Settings
-          </Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity 
+            style={[styles.tabItem, activeTab === 'settings' && styles.tabItemActive]}
+            onPress={() => setActiveTab('settings')}
+          >
+            <Text style={styles.tabIcon}>⚙️</Text>
+            <Text style={[styles.tabLabel, activeTab === 'settings' && styles.tabLabelActive]}>
+              Settings
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -531,4 +935,74 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '600',
   },
+  orderRight: {
+  alignItems: 'flex-end',
+},
+confirmHint: {
+  fontSize: 11,
+  color: COLORS.secondary,
+  fontWeight: '600',
+  marginTop: 4,
+},
+backButton: {
+  paddingVertical: 8,
+  marginBottom: 8,
+},
+backButtonText: {
+  color: COLORS.primary,
+  fontSize: 16,
+  fontWeight: '600',
+},
+formGroup: {
+  marginBottom: 16,
+},
+formLabel: {
+  fontSize: 14,
+  fontWeight: '600',
+  color: COLORS.primary,
+  marginBottom: 8,
+},
+formInput: {
+  backgroundColor: COLORS.white,
+  borderRadius: 12,
+  padding: 16,
+  borderWidth: 1,
+  borderColor: COLORS.lightGray,
+  fontSize: 16,
+  color: COLORS.primary,
+},
+categoryRow: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 8,
+},
+categoryChip: {
+  paddingHorizontal: 16,
+  paddingVertical: 8,
+  borderRadius: 20,
+  backgroundColor: COLORS.lightGray,
+},
+categoryChipActive: {
+  backgroundColor: COLORS.primary,
+},
+categoryChipText: {
+  fontSize: 13,
+  color: COLORS.gray,
+  fontWeight: '500',
+},
+categoryChipTextActive: {
+  color: COLORS.white,
+},
+saveButton: {
+  backgroundColor: COLORS.primary,
+  borderRadius: 12,
+  padding: 16,
+  alignItems: 'center',
+  marginTop: 16,
+},
+saveButtonText: {
+  color: COLORS.white,
+  fontSize: 16,
+  fontWeight: '600',
+},
 });

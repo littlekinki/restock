@@ -548,3 +548,124 @@ input:checked + .slider:before {
         grid-template-columns: 1fr;
     }
 }
+
+/* Users Section */
+.users-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.section-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.count-badge {
+    background: var(--primary);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.user-card {
+    background: white;
+    padding: 16px 20px;
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    transition: var(--transition);
+}
+
+.user-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--primary);
+}
+
+.user-phone {
+    font-size: 14px;
+    color: var(--gray-600);
+}
+
+.user-address {
+    font-size: 13px;
+    color: var(--gray-500);
+}
+
+.user-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.user-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.user-status.active {
+    background: #E8F5E9;
+    color: #1B5E20;
+}
+
+.user-status.inactive {
+    background: #FFEBEE;
+    color: #C62828;
+}
+
+.user-stat {
+    font-size: 13px;
+    color: var(--gray-600);
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--gray-500);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--gray-500);
+}
+
+.empty-state p:first-child {
+    font-size: 48px;
+    margin-bottom: 12px;
+}

@@ -16,26 +16,27 @@
                 <img src="../landing-page/assets/images/logo.png" alt="Restock" class="logo-img" />
             </div>
             <nav class="nav-menu">
-                <a href="#" class="nav-item active">
+                <a href="#" class="nav-item active" onclick="showSection('dashboard')">
                     <span class="nav-icon">📊</span> Dashboard
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" onclick="showSection('orders')">
                     <span class="nav-icon">📦</span> Orders
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" onclick="showSection('shops')">
                     <span class="nav-icon">🏪</span> Shops
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" onclick="showSection('distributors')">
                     <span class="nav-icon">📦</span> Distributors
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" onclick="showSection('riders')">
                     <span class="nav-icon">🏍️</span> Riders
                 </a>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon">💰</span> Payments
-                </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" onclick="showSection('settings')">
                     <span class="nav-icon">⚙️</span> Settings
+                </a>
+                <a href="#" class="nav-item" onclick="showSection('requests')">
+                    <span class="nav-icon">📝</span> Product Requests
+                    <span class="badge" id="requestsBadge" style="display:none;">0</span>
                 </a>
             </nav>
             <div class="sidebar-footer">
@@ -141,6 +142,66 @@
                 <h3>📋 Recent Orders</h3>
                 <div id="recentOrdersList">
                     <p style="color: var(--gray-500); font-size: 14px;">Loading...</p>
+                </div>
+            </section>
+
+            <!-- ✅ USERS SECTIONS -->
+
+            <!-- Shops Section -->
+            <section class="users-section" id="shopsSection" style="display: none;">
+                <div class="section-header">
+                    <h2>🏪 All Shops</h2>
+                    <span id="shopsCount" class="count-badge">0</span>
+                </div>
+                <div class="users-list" id="shopsList">
+                    <div class="loading">Loading shops...</div>
+                </div>
+            </section>
+
+            <!-- Distributors Section -->
+            <section class="users-section" id="distributorsSection" style="display: none;">
+                <div class="section-header">
+                    <h2>📦 All Distributors</h2>
+                    <span id="distributorsCount" class="count-badge">0</span>
+                </div>
+                <div class="users-list" id="distributorsList">
+                    <div class="loading">Loading distributors...</div>
+                </div>
+            </section>
+
+            <!-- Product Requests Section -->
+            <section class="users-section" id="requestsSection" style="display: none;">
+                <div class="section-header">
+                    <h2>📝 Product Requests</h2>
+                    <span id="requestsCount" class="count-badge">0</span>
+                </div>
+                <p style="color: var(--gray-600); margin-bottom: 16px;">
+                    Shops are asking for these products. Find distributors who sell them!
+                </p>
+                <div class="users-list" id="requestsList">
+                    <div class="loading">Loading requests...</div>
+                </div>
+            </section>
+
+            <!-- Riders Section -->
+            <section class="users-section" id="ridersSection" style="display: none;">
+                <div class="section-header">
+                    <h2>🏍️ All Riders</h2>
+                    <span id="ridersCount" class="count-badge">0</span>
+                </div>
+                <div class="users-list" id="ridersList">
+                    <div class="loading">Loading riders...</div>
+                </div>
+            </section>
+
+            <!-- Orders Section -->
+            <section class="users-section" id="ordersSection" style="display: none;">
+                <div class="section-header">
+                    <h2>📦 All Orders</h2>
+                    <span id="ordersCount" class="count-badge">0</span>
+                </div>
+                <div class="users-list" id="ordersList">
+                    <div class="loading">Loading orders...</div>
                 </div>
             </section>
 

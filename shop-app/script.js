@@ -313,17 +313,19 @@ function renderResults(results, term) {
     const count = document.getElementById('resultCount');
     
     if (results.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <p>🔍</p>
-                <p>No results found for "${term}"</p>
-                <p style="color: var(--gray-500); font-size: 14px;">Try a different keyword or check spelling</p>
-            </div>
-        `;
-        title.textContent = `🔍 No results found`;
-        count.textContent = '';
-        return;
+    container.innerHTML = '';
+    title.textContent = '';
+    count.textContent = '';
+
+    const requestSection = document.getElementById('requestProductSection');
+    if (requestSection) {
+        requestSection.style.display = 'block';
+        document.getElementById('requestedProductName').textContent = term;
+        const input = document.getElementById('requestProductNameInput');
+        if (input) input.value = term;
     }
+    return;
+}
     
     const grouped = {};
     results.forEach(product => {
@@ -704,3 +706,66 @@ document.addEventListener('keydown', (e) => {
 // ============================================================
 console.log('🚀 Shop App loading...');
 loadShops();
+
+// ============================================================
+// OPEN REQUEST MODAL
+// ============================================================
+function openRequestModal() {
+    const term = document.getElementById('requestedProductName').textContent;
+    document.getElementById('requestProductNameInput').value = term;
+    document.getElementById('requestModal').classList.add('active');
+}
+
+// ============================================================
+// CLOSE REQUEST MODAL
+// ============================================================
+function closeRequestModal() {
+    document.getElementById('requestModal').classList.remove('active');
+}
+
+// ============================================================
+// SUBMIT PRODUCT REQUEST
+// ============================================================
+async function submitProductRequest(event) {
+    event.preventDefault();
+    
+    const productName = document.getElementById('requestProductNameInput').value;
+    const category = document.getElementById('requestCategory').value;
+    const quantity = parseInt(document.getElementById('requestQuantity').value) || 1;
+    const unit = document.getElementById('requestUnit').value;
+    const notes = document.getElementById('requestNotes').value;
+
+    if (!productName) {
+        showToast('⚠️ Please enter a product name');
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/product-requests`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                productName,
+                category,
+                quantity,
+                unit,
+                notes
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showToast('✅ Request submitted! We\'ll find a distributor for you.');
+            closeRequestModal();
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to submit request'));
+        }
+    } catch (error) {
+        console.error('Request error:', error);
+        showToast('❌ Failed to submit request');
+    }
+}

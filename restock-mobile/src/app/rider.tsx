@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -17,9 +18,9 @@ import * as Location from 'expo-location';
 const API_URL = 'https://restock-backend-zkrx.onrender.com/api';
 
 const BANK_DETAILS = {
-  bankName: process.env.EXPO_PUBLIC_BANK_NAME || 'Palmpay',
-  accountNumber: process.env.EXPO_PUBLIC_BANK_ACCOUNT || '7046835216',
-  accountName: process.env.EXPO_PUBLIC_BANK_ACCOUNT_NAME || 'Kingsley Mamah .O.',
+  bankName: process.env.EXPO_PUBLIC_BANK_NAME || 'GTBank',
+  accountNumber: process.env.EXPO_PUBLIC_BANK_ACCOUNT || '0123456789',
+  accountName: process.env.EXPO_PUBLIC_BANK_ACCOUNT_NAME || 'Restock / Morwave',
 };
 
 export default function RiderScreen() {
@@ -29,6 +30,11 @@ export default function RiderScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({ total: 0, pending: 0, completed: 0 });
+  
+  // Delivery action state
+  const [selectedDelivery, setSelectedDelivery] = useState(null);
+  const [showDeliveryAction, setShowDeliveryAction] = useState(false);
+  const [pin, setPin] = useState('');
 
   useEffect(() => {
     loadUser();
@@ -93,19 +99,170 @@ export default function RiderScreen() {
 
   const onRefresh = () => { setRefreshing(true); loadDeliveries(); };
 
-  const showDeliveryDetails = (delivery) => {
+  // ============================================================
+  // HANDLE DELIVERY PRESS
+  // ============================================================
+  const handleDeliveryPress = (delivery) => {
     const deliveryAddress = delivery.shopId?.address;
     const pickupAddress = delivery.distributorId?.address;
-    Alert.alert(
-      '📍 Delivery Details',
-      `📦 Order #${delivery._id.slice(-6).toUpperCase()}\n\n` +
+    
+    let title = '📦 Delivery Details';
+    let message = 
+      `Order #${delivery._id.slice(-6).toUpperCase()}\n\n` +
       `📥 Pickup from:\n${pickupAddress?.street || 'N/A'}\n${pickupAddress?.city || ''}\n\n` +
       `📦 Deliver to:\n${deliveryAddress?.street || 'N/A'}\n${deliveryAddress?.city || ''}\n\n` +
       `💰 Total: ₦${delivery.total?.toLocaleString()}\n\n` +
-      `🏦 PAYMENT DETAILS\nBank: ${BANK_DETAILS.bankName}\nAccount: ${BANK_DETAILS.accountNumber}\nName: ${BANK_DETAILS.accountName}`
-    );
+      `🏦 PAYMENT DETAILS\nBank: ${BANK_DETAILS.bankName}\nAccount: ${BANK_DETAILS.accountNumber}\nName: ${BANK_DETAILS.accountName}\n\n` +
+      `Ask customer to transfer, then enter PIN.`;
+    
+    const buttons = [];
+    
+    // Add action buttons based on status
+    if (delivery.status === 'confirmed') {
+      buttons.push({ text: '📦 Pick Up', onPress: () => pickupOrder(delivery._id) });
+    } else if (delivery.status === 'picked_up' || delivery.status === 'out_for_delivery') {
+      buttons.push({ text: '🔑 Enter PIN', onPress: () => openPinEntry(delivery._id) });
+    }
+    
+    buttons.push({ text: 'Close', style: 'cancel' });
+    
+    Alert.alert(title, message, buttons);
   };
 
+  // ============================================================
+  // PICKUP ORDER
+  // ============================================================
+  const pickupOrder = async (orderId) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          status: 'out_for_delivery', 
+          note: 'Rider picked up order' 
+        })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Picked Up', 'Order is now out for delivery!');
+        loadDeliveries();
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to pick up order');
+      }
+    } catch (error) {
+      console.error('Pickup error:', error);
+      Alert.alert('❌ Error', 'Could not pick up order');
+    }
+  };
+
+  // ============================================================
+  // OPEN PIN ENTRY
+  // ============================================================
+  const openPinEntry = (orderId) => {
+    setSelectedDelivery(orderId);
+    setPin('');
+    setShowDeliveryAction(true);
+  };
+
+  // ============================================================
+  // VERIFY PIN & DELIVER
+  // ============================================================
+  const verifyPinAndDeliver = async () => {
+    if (!pin || pin.length !== 4) {
+      Alert.alert('⚠️ Invalid PIN', 'Please enter the 4-digit PIN from the customer.');
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/orders/${selectedDelivery}/verify-pin`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ pin })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Delivered!', 'Order marked as delivered successfully!');
+        setShowDeliveryAction(false);
+        setPin('');
+        setSelectedDelivery(null);
+        loadDeliveries();
+      } else {
+        Alert.alert('❌ Invalid PIN', data.error || 'Please check the PIN and try again.');
+        setPin('');
+      }
+    } catch (error) {
+      console.error('PIN verification error:', error);
+      Alert.alert('❌ Error', 'Could not verify PIN');
+    }
+  };
+
+  // ============================================================
+  // RENDER PIN ENTRY SCREEN
+  // ============================================================
+  const renderPinEntry = () => (
+    <>
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={() => {
+          setShowDeliveryAction(false);
+          setPin('');
+          setSelectedDelivery(null);
+        }}
+      >
+        <Text style={styles.backButtonText}>← Back</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.title}>🔑 Enter Delivery PIN</Text>
+      <Text style={styles.subtitle}>Ask the customer for their 4-digit PIN</Text>
+
+      <View style={styles.pinContainer}>
+        <TextInput
+          style={styles.pinInput}
+          placeholder="• • • •"
+          placeholderTextColor="#ADB5BD"
+          keyboardType="numeric"
+          maxLength={4}
+          value={pin}
+          onChangeText={setPin}
+          autoFocus
+        />
+      </View>
+
+      <View style={styles.pinDots}>
+        {[0, 1, 2, 3].map((i) => (
+          <View 
+            key={i} 
+            style={[
+              styles.pinDot, 
+              pin.length > i && styles.pinDotFilled
+            ]} 
+          />
+        ))}
+      </View>
+
+      <TouchableOpacity style={styles.saveButton} onPress={verifyPinAndDeliver}>
+        <Text style={styles.saveButtonText}>✅ Verify & Deliver</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.pinHelp}>
+        💡 The customer received this PIN via SMS when you were assigned this order.
+      </Text>
+    </>
+  );
+
+  // ============================================================
+  // RENDER DASHBOARD
+  // ============================================================
   const renderDashboard = () => (
     <>
       <Text style={styles.title}>🏍️ Rider Dashboard</Text>
@@ -127,14 +284,14 @@ export default function RiderScreen() {
       </View>
 
       <View style={styles.grid}>
-        <TouchableOpacity style={styles.card} onPress={() => Alert.alert('My Deliveries', `You have ${stats.pending} deliveries in progress`)}>
-          <Text style={styles.cardIcon}>📦</Text>
-          <Text style={styles.cardTitle}>My Deliveries</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity style={styles.card} onPress={() => Alert.alert('Earnings', `Total earnings: ₦${user?.earnings?.toLocaleString() || 0}`)}>
           <Text style={styles.cardIcon}>💰</Text>
           <Text style={styles.cardTitle}>Earnings</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.card} onPress={() => Alert.alert('Bank Details', `Bank: ${BANK_DETAILS.bankName}\nAccount: ${BANK_DETAILS.accountNumber}\nName: ${BANK_DETAILS.accountName}`)}>
+          <Text style={styles.cardIcon}>🏦</Text>
+          <Text style={styles.cardTitle}>Bank Details</Text>
         </TouchableOpacity>
       </View>
 
@@ -149,10 +306,20 @@ export default function RiderScreen() {
             const deliveryAddress = delivery.shopId?.address;
             const pickupAddress = delivery.distributorId?.address;
             return (
-              <TouchableOpacity key={index} style={styles.deliveryItem} onPress={() => showDeliveryDetails(delivery)}>
+              <TouchableOpacity 
+                key={index} 
+                style={styles.deliveryItem} 
+                onPress={() => handleDeliveryPress(delivery)}
+              >
                 <View>
                   <Text style={styles.deliveryId}>#{delivery._id.slice(-6).toUpperCase()}</Text>
                   <Text style={styles.deliveryAddress}>📍 {deliveryAddress?.city || 'Unknown'} → {pickupAddress?.city || 'Unknown'}</Text>
+                  {delivery.status === 'confirmed' && (
+                    <Text style={styles.actionHint}>Tap to pick up →</Text>
+                  )}
+                  {(delivery.status === 'picked_up' || delivery.status === 'out_for_delivery') && (
+                    <Text style={styles.actionHint}>Tap to enter PIN →</Text>
+                  )}
                 </View>
                 <View style={styles.deliveryRight}>
                   <Text style={styles.deliveryStatus}>{delivery.status?.toUpperCase()}</Text>
@@ -166,6 +333,9 @@ export default function RiderScreen() {
     </>
   );
 
+  // ============================================================
+  // RENDER SETTINGS
+  // ============================================================
   const renderSettings = () => (
     <>
       <Text style={styles.title}>⚙️ Settings</Text>
@@ -189,29 +359,11 @@ export default function RiderScreen() {
         <Text style={styles.settingsArrow}>→</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Service Area', 'Service area settings coming soon!')}>
-        <Text style={styles.settingsIcon}>📍</Text>
-        <View style={styles.settingsText}>
-          <Text style={styles.settingsTitle}>Service Area</Text>
-          <Text style={styles.settingsSubtitle}>Update your operating area</Text>
-        </View>
-        <Text style={styles.settingsArrow}>→</Text>
-      </TouchableOpacity>
-
       <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Bank Details', `Bank: ${BANK_DETAILS.bankName}\nAccount: ${BANK_DETAILS.accountNumber}\nName: ${BANK_DETAILS.accountName}`)}>
         <Text style={styles.settingsIcon}>💰</Text>
         <View style={styles.settingsText}>
           <Text style={styles.settingsTitle}>Bank Details</Text>
           <Text style={styles.settingsSubtitle}>Manage payment information</Text>
-        </View>
-        <Text style={styles.settingsArrow}>→</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Password', 'Password settings coming soon!')}>
-        <Text style={styles.settingsIcon}>🔒</Text>
-        <View style={styles.settingsText}>
-          <Text style={styles.settingsTitle}>Change Password</Text>
-          <Text style={styles.settingsSubtitle}>Update your password</Text>
         </View>
         <Text style={styles.settingsArrow}>→</Text>
       </TouchableOpacity>
@@ -241,26 +393,33 @@ export default function RiderScreen() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {activeTab === 'dashboard' ? renderDashboard() : renderSettings()}
+        {showDeliveryAction 
+          ? renderPinEntry() 
+          : activeTab === 'dashboard' 
+            ? renderDashboard() 
+            : renderSettings()
+        }
       </ScrollView>
 
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={[styles.tabItem, activeTab === 'dashboard' && styles.tabItemActive]}
-          onPress={() => setActiveTab('dashboard')}
-        >
-          <Text style={styles.tabIcon}>📊</Text>
-          <Text style={[styles.tabLabel, activeTab === 'dashboard' && styles.tabLabelActive]}>Dashboard</Text>
-        </TouchableOpacity>
+      {!showDeliveryAction && (
+        <View style={styles.tabBar}>
+          <TouchableOpacity
+            style={[styles.tabItem, activeTab === 'dashboard' && styles.tabItemActive]}
+            onPress={() => setActiveTab('dashboard')}
+          >
+            <Text style={styles.tabIcon}>📊</Text>
+            <Text style={[styles.tabLabel, activeTab === 'dashboard' && styles.tabLabelActive]}>Dashboard</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.tabItem, activeTab === 'settings' && styles.tabItemActive]}
-          onPress={() => setActiveTab('settings')}
-        >
-          <Text style={styles.tabIcon}>⚙️</Text>
-          <Text style={[styles.tabLabel, activeTab === 'settings' && styles.tabLabelActive]}>Settings</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={[styles.tabItem, activeTab === 'settings' && styles.tabItemActive]}
+            onPress={() => setActiveTab('settings')}
+          >
+            <Text style={styles.tabIcon}>⚙️</Text>
+            <Text style={[styles.tabLabel, activeTab === 'settings' && styles.tabLabelActive]}>Settings</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -304,6 +463,7 @@ const styles = StyleSheet.create({
   deliveryItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },
   deliveryId: { fontSize: 14, fontWeight: '600', color: COLORS.primary },
   deliveryAddress: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
+  actionHint: { fontSize: 11, color: COLORS.secondary, fontWeight: '600', marginTop: 4 },
   deliveryRight: { alignItems: 'flex-end' },
   deliveryStatus: { fontSize: 12, fontWeight: '600', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, backgroundColor: COLORS.lightGray, marginBottom: 4 },
   deliveryTotal: { fontSize: 14, fontWeight: '700', color: COLORS.primary },
@@ -322,4 +482,15 @@ const styles = StyleSheet.create({
   tabIcon: { fontSize: 24 },
   tabLabel: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
   tabLabelActive: { color: COLORS.primary, fontWeight: '600' },
+  // PIN entry styles
+  backButton: { paddingVertical: 8, marginBottom: 8 },
+  backButtonText: { color: COLORS.primary, fontSize: 16, fontWeight: '600' },
+  pinContainer: { backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 2, borderColor: COLORS.primary, marginBottom: 24 },
+  pinInput: { padding: 24, fontSize: 32, textAlign: 'center', letterSpacing: 16, color: COLORS.primary, fontWeight: '700' },
+  pinDots: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginBottom: 32 },
+  pinDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: COLORS.lightGray },
+  pinDotFilled: { backgroundColor: COLORS.secondary },
+  saveButton: { backgroundColor: COLORS.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 16 },
+  saveButtonText: { color: COLORS.white, fontSize: 16, fontWeight: '600' },
+  pinHelp: { textAlign: 'center', color: COLORS.gray, fontSize: 13, marginTop: 24, paddingHorizontal: 20 },
 });

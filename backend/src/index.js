@@ -21,6 +21,7 @@ const distributorRoutes = require('./routes/distributors');
 const riderRoutes = require('./routes/riders');
 const whatsappRoutes = require('./routes/whatsapp');
 const smsRoutes = require('./routes/sms');
+const productRequestRoutes = require('./routes/productRequests');
 
 app.use('/api/orders', orderRoutes);
 app.use('/api/shops', shopRoutes);
@@ -28,6 +29,7 @@ app.use('/api/distributors', distributorRoutes);
 app.use('/api/riders', riderRoutes);
 app.use('/whatsapp', whatsappRoutes);
 app.use('/api/sms', smsRoutes);
+app.use('/api/product-requests', productRequestRoutes);
 
 // Health check
 app.get('/', (req, res) => {

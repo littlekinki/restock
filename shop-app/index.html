@@ -66,6 +66,77 @@
             </div>
         </section>
 
+        <!-- ✅ REQUEST PRODUCT SECTION (Hidden by default) -->
+        <div id="requestProductSection" style="display: none; margin-top: 24px;">
+            <div style="background: white; padding: 24px; border-radius: var(--radius); border: 1px solid var(--gray-200); text-align: center;">
+                <div style="font-size: 48px; margin-bottom: 12px;">🔍</div>
+                <h3 style="font-size: 18px; margin-bottom: 8px; color: var(--primary);">Product Not Available</h3>
+                <p style="color: var(--gray-600); margin-bottom: 20px; font-size: 14px;">
+                    We couldn't find "<span id="requestedProductName" style="font-weight: 700; color: var(--primary);"></span>" from any distributor.
+                    <br>Would you like us to find it for you?
+                </p>
+                <button class="btn btn-primary" onclick="openRequestModal()" style="padding: 12px 32px;">
+                    📝 Request This Product
+                </button>
+            </div>
+        </div>
+
+        <!-- ✅ REQUEST PRODUCT MODAL -->
+        <div class="modal" id="requestModal">
+            <div class="modal-content" style="max-width: 480px;">
+                <div class="modal-header">
+                    <h2>📝 Request a Product</h2>
+                    <button class="modal-close" onclick="closeRequestModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <p style="color: var(--gray-600); font-size: 14px; margin-bottom: 16px;">
+                        Tell us what you need and we'll find a distributor for you.
+                    </p>
+                    <form id="requestForm" onsubmit="submitProductRequest(event)">
+                        <div class="form-group">
+                            <label>Product Name *</label>
+                            <input type="text" id="requestProductNameInput" placeholder="e.g., Coca-Cola" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="requestCategory">
+                                <option value="Beverages">Beverages</option>
+                                <option value="Noodles">Noodles</option>
+                                <option value="Food">Food</option>
+                                <option value="Snacks">Snacks</option>
+                                <option value="Detergents">Detergents</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div class="form-group">
+                                <label>Quantity</label>
+                                <input type="number" id="requestQuantity" placeholder="e.g., 10" value="1" min="1" />
+                            </div>
+                            <div class="form-group">
+                                <label>Unit</label>
+                                <select id="requestUnit">
+                                    <option value="carton">Carton</option>
+                                    <option value="pack">Pack</option>
+                                    <option value="piece">Piece</option>
+                                    <option value="kg">Kg</option>
+                                    <option value="litre">Litre</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Notes (Optional)</label>
+                            <input type="text" id="requestNotes" placeholder="e.g., Need it urgently" />
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeRequestModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary">📤 Submit Request</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- Cart Modal -->
         <div class="modal" id="cartModal">
             <div class="modal-content" style="max-width: 500px;">
