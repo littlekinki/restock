@@ -58,9 +58,7 @@ async function loadShops() {
         console.log('📡 Fetching shops with auth...');
         
         const response = await fetch(`${API_URL}/shops`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
         
         const data = await response.json();
@@ -75,16 +73,13 @@ async function loadShops() {
                 return;
             }
             
-            // Clear existing options
             select.innerHTML = '';
             
-            // Add placeholder option
             const placeholder = document.createElement('option');
             placeholder.value = '';
             placeholder.textContent = '-- Select your shop --';
             select.appendChild(placeholder);
             
-            // Add shops to dropdown
             shops.forEach(shop => {
                 const option = document.createElement('option');
                 option.value = shop._id;
@@ -95,7 +90,6 @@ async function loadShops() {
             
             console.log(`✅ Loaded ${shops.length} shops`);
             
-            // If user is a shop owner and there's a matching shop, auto-select it
             if (currentUser && currentUser.role === 'shop') {
                 const userShop = shops.find(shop => shop._id === currentUser.id);
                 if (userShop) {
@@ -104,12 +98,10 @@ async function loadShops() {
                 }
             }
             
-            // If shops exist and nothing is selected, select the first one
             if (shops.length > 0 && !select.value) {
                 select.value = shops[0]._id;
             }
             
-            // Trigger shop selection
             selectShop();
         } else {
             console.error('❌ Failed to load shops:', data.error);
@@ -151,16 +143,13 @@ async function loadDistributors() {
     try {
         const token = localStorage.getItem('token');
         const response = await fetch(`${API_URL}/distributors`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
         
         if (data.success) {
             distributors = data.distributors;
             
-            // Build product index with distributor info
             allProducts = [];
             distributors.forEach(dist => {
                 if (dist.products && dist.products.length > 0) {
@@ -263,9 +252,7 @@ async function uploadImage() {
             const token = localStorage.getItem('token');
             const response = await fetch(`${API_URL}/orders/ai-image`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
             });
 
@@ -296,9 +283,7 @@ function showAIResults(products) {
     
     if (confirm(message)) {
         products.forEach(p => {
-            // Search for product and add to cart
             quickSearch(p.name);
-            // Then add to cart logic
         });
         showToast('✅ Products added to cart!');
     }
@@ -313,25 +298,28 @@ function renderResults(results, term) {
     const count = document.getElementById('resultCount');
     
     if (results.length === 0) {
-    container.innerHTML = '';
-    title.textContent = '';
-    count.textContent = '';
+        container.innerHTML = '';
+        title.textContent = '';
+        count.textContent = '';
 
-    const requestSection = document.getElementById('requestProductSection');
-    if (requestSection) {
-        requestSection.style.display = 'block';
-        document.getElementById('requestedProductName').textContent = term;
-        const input = document.getElementById('requestProductNameInput');
-        if (input) input.value = term;
+        const requestSection = document.getElementById('requestProductSection');
+        if (requestSection) {
+            requestSection.style.display = 'block';
+            document.getElementById('requestedProductName').textContent = term;
+            const input = document.getElementById('requestProductNameInput');
+            if (input) input.value = term;
+        }
+        return;
     }
-    return;
-}
+
+    // Hide request section if results are found
+    const requestSectionHide = document.getElementById('requestProductSection');
+    if (requestSectionHide) requestSectionHide.style.display = 'none';
     
     const grouped = {};
     results.forEach(product => {
         const key = product.distributorId;
         if (!grouped[key]) {
-            const dist = distributors.find(d => d._id === key);
             grouped[key] = {
                 distributorId: key,
                 distributorName: product.distributorName,
@@ -371,7 +359,6 @@ function renderResults(results, term) {
                     );
                     const qty = inCart ? inCart.quantity : 0;
                     const stock = product.stock || 0;
-                    
                     
                     const sizeDisplay = product.size ? ` • ${product.size}` : '';
                     const unitDisplay = product.unit ? ` / ${product.unit}` : '';
@@ -655,7 +642,6 @@ function goToDashboard() {
     window.location.href = `http://${hostname}:${port}/shop-dashboard/index.html`;
 }
 
-
 // ============================================================
 // TOAST NOTIFICATIONS
 // ============================================================
@@ -692,6 +678,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeCart();
         closeConfirm();
+        closeRequestModal();
     }
     if (e.key === 'Enter') {
         const searchInput = document.getElementById('searchInput');
@@ -700,12 +687,6 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
-
-// ============================================================
-// INITIAL LOAD
-// ============================================================
-console.log('🚀 Shop App loading...');
-loadShops();
 
 // ============================================================
 // OPEN REQUEST MODAL
@@ -748,13 +729,7 @@ async function submitProductRequest(event) {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                productName,
-                category,
-                quantity,
-                unit,
-                notes
-            })
+            body: JSON.stringify({ productName, category, quantity, unit, notes })
         });
 
         const data = await response.json();
@@ -769,3 +744,73 @@ async function submitProductRequest(event) {
         showToast('❌ Failed to submit request');
     }
 }
+
+// ============================================================
+// HANDLE REORDER (when coming from dashboard)
+// ============================================================
+function checkForReorder() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isReorder = urlParams.get('reorder');
+
+    if (isReorder === 'true') {
+        const reorderData = localStorage.getItem('reorderCart');
+
+        if (reorderData) {
+            const data = JSON.parse(reorderData);
+            console.log('🔄 Loading reorder cart:', data);
+
+            // Set the shop
+            if (data.shopId) {
+                selectedShopId = data.shopId;
+                const select = document.getElementById('shopSelect');
+                if (select) select.value = data.shopId;
+            }
+
+            // Add items to cart
+            data.items.forEach(item => {
+                const existing = cart.find(c => 
+                    c.name === item.name && c.distributorId === item.distributorId
+                );
+
+                if (existing) {
+                    existing.quantity += item.quantity;
+                } else {
+                    cart.push({
+                        productId: item.productId || item.name,
+                        distributorId: item.distributorId,
+                        distributorName: item.distributorName,
+                        name: item.name,
+                        price: item.price,
+                        quantity: item.quantity,
+                        stock: item.stock || 100
+                    });
+                }
+            });
+
+            updateCartBadge();
+            showToast(`✅ ${data.items.length} items added to cart. Review and place order!`);
+
+            // Clear the reorder data
+            localStorage.removeItem('reorderCart');
+
+            // Clean the URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+
+            // Show cart after a short delay
+            setTimeout(() => {
+                viewCart();
+            }, 1000);
+        }
+    }
+}
+
+// ============================================================
+// INITIAL LOAD
+// ============================================================
+console.log('🚀 Shop App loading...');
+loadShops();
+
+// ✅ Check if there's a reorder cart waiting (after shops load)
+setTimeout(() => {
+    checkForReorder();
+}, 2000);

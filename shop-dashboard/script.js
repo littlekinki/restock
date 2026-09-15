@@ -5,7 +5,7 @@ let orders = [];
 let allProducts = [];
 
 // ============================================================
-// LOAD SHOPS 
+// LOAD SHOPS (Auto-select logged-in shop)
 // ============================================================
 async function loadShops() {
     try {
@@ -18,7 +18,6 @@ async function loadShops() {
             return;
         }
 
-        // Fetch the logged-in shop's data directly
         const res = await fetch(`${API_URL}/shops`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -27,35 +26,32 @@ async function loadShops() {
         if (data.success) {
             shops = data.shops;
             
-            // Auto-select the logged-in shop
             const myShop = shops.find(s => s._id === user.id);
             
             if (myShop) {
                 selectedShopId = myShop._id;
                 console.log('✅ Auto-selected shop:', myShop.businessName);
                 
-                // ✅ Set the shop name in header (ADD HERE)
                 const shopNameEl = document.getElementById('currentShopName');
                 if (shopNameEl) {
                     shopNameEl.textContent = myShop.businessName;
                 }
                 
-                // Hide the shop selector section
                 const selector = document.querySelector('.shop-selector');
                 if (selector) selector.style.display = 'none';
                 
-                // Load dashboard for this shop
                 loadDashboard();
             } else {
-                // Fallback: show dropdown
                 const select = document.getElementById('shopSelect');
-                select.innerHTML = '<option value="">-- Select a shop --</option>';
-                shops.forEach(shop => {
-                    const opt = document.createElement('option');
-                    opt.value = shop._id;
-                    opt.textContent = shop.businessName;
-                    select.appendChild(opt);
-                });
+                if (select) {
+                    select.innerHTML = '<option value="">-- Select a shop --</option>';
+                    shops.forEach(shop => {
+                        const opt = document.createElement('option');
+                        opt.value = shop._id;
+                        opt.textContent = shop.businessName;
+                        select.appendChild(opt);
+                    });
+                }
             }
         }
     } catch (err) {
@@ -67,7 +63,6 @@ async function loadShops() {
 // LOAD DASHBOARD
 // ============================================================
 async function loadDashboard() {
-    // If no shop selected, try auto-selecting from user
     if (!selectedShopId) {
         const user = JSON.parse(localStorage.getItem('user') || 'null');
         if (user && user.id) {
@@ -100,11 +95,15 @@ async function loadDashboard() {
         console.error('Error loading orders:', err);
     }
 }
+
 // ============================================================
 // FILTER BY DATE
 // ============================================================
 function filterOrdersByDate(orders) {
-    const filter = document.getElementById('dateFilter').value;
+    const dateFilter = document.getElementById('dateFilter');
+    if (!dateFilter) return orders;
+    
+    const filter = dateFilter.value;
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -122,7 +121,7 @@ function filterOrdersByDate(orders) {
             return orderDate.getMonth() === now.getMonth() &&
                    orderDate.getFullYear() === now.getFullYear();
         }
-        return true; // 'all'
+        return true;
     });
 }
 
@@ -130,7 +129,10 @@ function filterOrdersByDate(orders) {
 // FILTER BY CATEGORY
 // ============================================================
 function filterOrdersByCategory(orders) {
-    const category = document.getElementById('categoryFilter').value;
+    const categoryFilter = document.getElementById('categoryFilter');
+    if (!categoryFilter) return orders;
+    
+    const category = categoryFilter.value;
     if (category === 'all') return orders;
 
     return orders.filter(order => {
@@ -145,12 +147,13 @@ function filterOrdersByCategory(orders) {
 // ============================================================
 function loadCategories(orders) {
     const select = document.getElementById('categoryFilter');
+    if (!select) return;
+    
     const categories = new Set();
 
     (orders || []).forEach(order => {
         order.items.forEach(item => {
             if (item.category) categories.add(item.category);
-            // Also extract from product name as fallback
             const name = item.productName || '';
             if (name.includes('Indomie') || name.includes('Noodle')) categories.add('Noodles');
             else if (name.includes('Milk') || name.includes('Peak') || name.includes('Milo')) categories.add('Beverages');
@@ -160,7 +163,6 @@ function loadCategories(orders) {
         });
     });
 
-    // Keep the current selection
     const current = select.value;
     select.innerHTML = '<option value="all">All Categories</option>';
     categories.forEach(cat => {
@@ -175,11 +177,12 @@ function loadCategories(orders) {
 // ============================================================
 // RENDER ORDERS
 // ============================================================
-function renderOrders() {
+function renderOrders(ordersToRender) {
     const container = document.getElementById('orderList');
+    if (!container) return;
     
-    // Apply category filter
-    const filtered = filterOrdersByCategory(orders);
+    const dataToUse = ordersToRender || orders;
+    const filtered = filterOrdersByCategory(dataToUse);
     
     if (filtered.length === 0) {
         container.innerHTML = '<div class="empty-state">📭 No orders found</div>';
@@ -193,13 +196,12 @@ function renderOrders() {
 
         const totalItems = order.items.reduce((sum, i) => sum + i.quantity, 0);
 
-        // ✅ PIN DISPLAY - Shows on the dashboard
         const showPin = order.deliveryPIN && (order.status === 'picked_up' || order.status === 'out_for_delivery');
         
         const pinDisplay = showPin ? `
-            <div style="background: #E8F5E9; padding: 10px 14px; border-radius: 8px; margin-top: 8px; border: 2px solid #00B894;">
-                <span style="font-weight: 700; color: #00B894;">🔑 Delivery PIN: </span>
-                <span style="font-size: 24px; font-weight: 800; color: #00B894; letter-spacing: 4px;">${order.deliveryPIN}</span>
+            <div style="background: #E8F5E9; padding: 10px 14px; border-radius: 8px; margin-top: 8px; border: 2px solid #4DBE18;">
+                <span style="font-weight: 700; color: #4DBE18;">🔑 Delivery PIN: </span>
+                <span style="font-size: 24px; font-weight: 800; color: #4DBE18; letter-spacing: 4px;">${order.deliveryPIN}</span>
                 <span style="font-size: 12px; color: #6C757D; margin-left: 12px;">Give this PIN to your rider</span>
             </div>
         ` : '';
@@ -219,21 +221,27 @@ function renderOrders() {
                 <div class="order-meta">
                     <div class="order-total">₦${order.total.toLocaleString()}</div>
                     <span class="order-status ${order.status}">${order.status.toUpperCase()}</span>
-                    ${order.status === 'delivered' ? `<button class="reorder-btn" onclick="reorder('${order._id}')">🔄 Reorder</button>` : ''}
+                    ${order.status === 'delivered' ? `
+                        <button class="reorder-btn" onclick="reorder('${order._id}')">
+                            🔄 Reorder
+                        </button>
+                    ` : ''}
                 </div>
             </div>
         `;
     }).join('');
 }
+
 // ============================================================
 // RENDER TOP PRODUCTS
 // ============================================================
-function renderTopProducts(orders) {
+function renderTopProducts(ordersToRender) {
     const container = document.getElementById('topProducts');
+    if (!container) return;
+    
     const productMap = {};
 
-    // Count product occurrences
-    orders.forEach(order => {
+    ordersToRender.forEach(order => {
         order.items.forEach(item => {
             const key = item.productName;
             if (!productMap[key]) {
@@ -267,11 +275,11 @@ function renderTopProducts(orders) {
 // ============================================================
 // UPDATE STATS
 // ============================================================
-function updateStats(orders) {
-    const total = orders.length;
-    const pending = orders.filter(o => o.status === 'pending' || o.status === 'confirmed').length;
-    const delivered = orders.filter(o => o.status === 'delivered').length;
-    const spent = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+function updateStats(ordersToUse) {
+    const total = ordersToUse.length;
+    const pending = ordersToUse.filter(o => o.status === 'pending' || o.status === 'confirmed').length;
+    const delivered = ordersToUse.filter(o => o.status === 'delivered').length;
+    const spent = ordersToUse.reduce((sum, o) => sum + (o.total || 0), 0);
 
     document.getElementById('totalOrders').textContent = total;
     document.getElementById('pendingOrders').textContent = pending;
@@ -287,48 +295,56 @@ function resetStats() {
 }
 
 // ============================================================
-// REORDER
+// REORDER - Copy items from past order to Shop App cart
 // ============================================================
 async function reorder(orderId) {
     try {
-        const res = await fetch(`${API_URL}/orders/${orderId}`);
-        const data = await res.json();
-        if (data.success) {
-            const order = data.order;
-            // Create new order with same items
-            const newOrder = {
-                shopId: order.shopId._id,
-                distributorId: order.distributorId?._id || order.distributorId,
-                items: order.items.map(item => ({
-                    productName: item.productName,
-                    quantity: item.quantity,
-                    price: item.price,
-                    total: item.total
-                })),
-                subtotal: order.subtotal,
-                deliveryFee: 0,
-                total: order.total,
-                paymentMethod: 'cash_on_delivery',
-                deliveryAddress: order.deliveryAddress || {}
-            };
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-            const placeRes = await fetch(`${API_URL}/orders`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newOrder)
-            });
+        console.log('🔄 Reordering order:', orderId);
 
-            const placeData = await placeRes.json();
-            if (placeData.success) {
-                showToast('✅ Reorder placed successfully!');
-                loadDashboard();
-            } else {
-                showToast('❌ Failed to place reorder');
-            }
+        const response = await fetch(`${API_URL}/orders/${orderId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+
+        if (!data.success) {
+            showToast('❌ Failed to load order details');
+            return;
         }
-    } catch (err) {
-        console.error('Error reordering:', err);
-        showToast('❌ Error reordering');
+
+        const order = data.order;
+
+        if (!order.items || order.items.length === 0) {
+            showToast('⚠️ This order has no items');
+            return;
+        }
+
+        const cartData = order.items.map(item => ({
+            name: item.productName,
+            price: item.price,
+            quantity: item.quantity,
+            distributorId: order.distributorId?._id || order.distributorId,
+            distributorName: order.distributorId?.businessName || 'Previous Distributor',
+            stock: 100
+        }));
+
+        localStorage.setItem('reorderCart', JSON.stringify({
+            items: cartData,
+            shopId: order.shopId?._id || order.shopId,
+            originalOrderId: orderId
+        }));
+
+        console.log('✅ Cart data saved for reorder:', cartData);
+
+        const port = window.location.port || '5500';
+        const hostname = window.location.hostname;
+        window.location.href = `http://${hostname}:${port}/shop-app/index.html?reorder=true`;
+
+    } catch (error) {
+        console.error('❌ Reorder error:', error);
+        showToast('❌ Failed to reorder');
     }
 }
 
@@ -411,30 +427,22 @@ function logout() {
 }
 
 // ============================================================
-// INIT
-// ============================================================
-loadShops();
-
-// ============================================================
-// SHOW SECTION (Sidebar Navigation)
+// SHOW SECTION (Dashboard / Settings)
 // ============================================================
 function showSection(section) {
     const settingsSection = document.getElementById('settingsSection');
     const dashboardSection = document.getElementById('dashboardSection');
 
-    // ✅ Always keep the banner visible
     const banner = document.querySelector('.shop-now-banner');
     if (banner) banner.style.display = 'flex';
 
     if (section === 'settings') {
-        // Show settings, hide dashboard
         if (dashboardSection) dashboardSection.style.display = 'none';
         if (settingsSection) {
             settingsSection.style.display = 'block';
             loadSettingsData();
         }
     } else {
-        // Show dashboard, hide settings
         if (settingsSection) settingsSection.style.display = 'none';
         if (dashboardSection) dashboardSection.style.display = 'block';
         loadDashboard();
@@ -449,7 +457,6 @@ async function loadSettingsData() {
         const token = localStorage.getItem('token');
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         
-        // Fetch shop data
         const response = await fetch(`${API_URL}/shops`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -458,17 +465,19 @@ async function loadSettingsData() {
         if (data.success) {
             const shop = data.shops.find(s => s._id === user.id);
             if (shop) {
-                // Profile
-                document.getElementById('settingsBusinessName').value = shop.businessName || '';
-                document.getElementById('settingsOwnerName').value = shop.ownerName || '';
-                document.getElementById('settingsPhone').value = shop.phone || '';
-                document.getElementById('settingsEmail').value = shop.email || '';
+                const setVal = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = val || '';
+                };
                 
-                // Address
-                document.getElementById('settingsStreet').value = shop.address?.street || '';
-                document.getElementById('settingsCity').value = shop.address?.city || '';
-                document.getElementById('settingsState').value = shop.address?.state || '';
-                document.getElementById('settingsLandmark').value = shop.address?.landmark || '';
+                setVal('settingsBusinessName', shop.businessName);
+                setVal('settingsOwnerName', shop.ownerName);
+                setVal('settingsPhone', shop.phone);
+                setVal('settingsEmail', shop.email);
+                setVal('settingsStreet', shop.address?.street);
+                setVal('settingsCity', shop.address?.city);
+                setVal('settingsState', shop.address?.state);
+                setVal('settingsLandmark', shop.address?.landmark);
             }
         }
     } catch (error) {
@@ -512,7 +521,6 @@ async function updateShopSettings(updates, successMessage) {
         const token = localStorage.getItem('token');
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         
-        // Get current shop
         const shopResponse = await fetch(`${API_URL}/shops`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -524,7 +532,6 @@ async function updateShopSettings(updates, successMessage) {
             return;
         }
 
-        // Merge updates with existing data
         const mergedData = {
             ...shop,
             ...updates,
@@ -546,7 +553,6 @@ async function updateShopSettings(updates, successMessage) {
         if (data.success) {
             showToast('✅ ' + successMessage);
             
-            // Update localStorage if name or phone changed
             if (updates.businessName || updates.phone) {
                 const updatedUser = {
                     ...user,
@@ -630,3 +636,8 @@ function deactivateAccount() {
         }
     }
 }
+
+// ============================================================
+// INIT
+// ============================================================
+loadShops();
