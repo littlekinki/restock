@@ -33,6 +33,10 @@ const distributorSchema = new mongoose.Schema({
   rating: { type: Number, default: 0 },
   totalOrders: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
+  notificationPrefs: {
+    sms: { type: Boolean, default: true },
+    push: { type: Boolean, default: true }
+  },
   createdAt: { type: Date, default: Date.now }
 });
 

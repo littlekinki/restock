@@ -258,19 +258,18 @@ export default function DistributorScreen() {
       ]
     );
   };
-
+  
   const doCancelOrder = async (orderId) => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
+      const response = await fetch(`${API_URL}/orders/${orderId}/cancel`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          status: 'cancelled',
-          note: 'Order cancelled by distributor'
+          reason: 'Cancelled by distributor'
         })
       });
       const data = await response.json();

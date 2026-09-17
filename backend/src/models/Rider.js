@@ -39,6 +39,11 @@ const riderSchema = new mongoose.Schema({
   rating: { type: Number, default: 0 },
   earnings: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
+  // ✅ Notification Preferences
+  notificationPrefs: {
+    sms: { type: Boolean, default: true },
+    push: { type: Boolean, default: true }
+  },
   createdAt: { type: Date, default: Date.now }
 });
 

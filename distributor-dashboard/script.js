@@ -1309,3 +1309,46 @@ async function loadDistributorReports() {
         console.error('Error loading reports:', error);
     }
 }
+
+// ============================================================
+// CANCEL ORDER (Distributor)
+// ============================================================
+async function cancelOrder() {
+    if (!selectedOrderId) {
+        showToast('No order selected');
+        return;
+    }
+
+    const reason = prompt('Why are you cancelling this order?\n\nExamples:\n- Out of stock\n- Cannot deliver to this area\n- Other');
+
+    if (reason === null) return; // User clicked Cancel
+
+    if (!reason.trim()) {
+        showToast('⚠️ Please provide a reason');
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/orders/${selectedOrderId}/cancel`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ reason: reason.trim() })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showToast('✅ Order cancelled');
+            closeModal();
+            fetchOrders();
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to cancel'));
+        }
+    } catch (error) {
+        console.error('Cancel error:', error);
+        showToast('❌ Could not cancel order');
+    }
+}

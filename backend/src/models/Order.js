@@ -101,6 +101,19 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  cancelReason: {
+    type: String,
+    default: ''
+  },
+  cancelledBy: {
+    type: String,
+    enum: ['shop', 'distributor', 'admin', null],
+    default: null
+  },
+  cancelledAt: {
+    type: Date,
+    default: null
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

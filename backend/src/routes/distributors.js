@@ -64,4 +64,26 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// ============================================================
+// UPDATE NOTIFICATION PREFERENCES - PATCH /api/distributors/:id/notification-prefs
+// ============================================================
+router.patch('/:id/notification-prefs', auth, async (req, res) => {
+    try {
+        const { sms, push } = req.body;
+        const distributor = await Distributor.findById(req.params.id);
+        if (!distributor) return res.status(404).json({ success: false, error: 'Distributor not found' });
+
+        distributor.notificationPrefs = {
+            sms: typeof sms === 'boolean' ? sms : (distributor.notificationPrefs?.sms ?? true),
+            push: typeof push === 'boolean' ? push : (distributor.notificationPrefs?.push ?? true),
+        };
+        await distributor.save();
+
+        res.json({ success: true, notificationPrefs: distributor.notificationPrefs });
+    } catch (error) {
+        console.error('Update notification prefs error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 module.exports = router;

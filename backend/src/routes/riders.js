@@ -165,4 +165,26 @@ function deg2rad(deg) {
   return deg * (Math.PI/180);
 }
 
+// ============================================================
+// UPDATE NOTIFICATION PREFERENCES - PATCH /api/riders/:id/notification-prefs
+// ============================================================
+router.patch('/:id/notification-prefs', auth, async (req, res) => {
+    try {
+        const { sms, push } = req.body;
+        const rider = await Rider.findById(req.params.id);
+        if (!rider) return res.status(404).json({ success: false, error: 'Rider not found' });
+
+        rider.notificationPrefs = {
+            sms: typeof sms === 'boolean' ? sms : (rider.notificationPrefs?.sms ?? true),
+            push: typeof push === 'boolean' ? push : (rider.notificationPrefs?.push ?? true),
+        };
+        await rider.save();
+
+        res.json({ success: true, notificationPrefs: rider.notificationPrefs });
+    } catch (error) {
+        console.error('Update notification prefs error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 module.exports = router;

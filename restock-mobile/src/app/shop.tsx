@@ -309,13 +309,53 @@ export default function ShopScreen() {
   };
 
   // ============================================================
+  // CANCEL ORDER (Shop) — Android + iOS safe
+  // ============================================================
+  const cancelOrder = (order) => {
+    Alert.alert(
+      '❌ Cancel Order',
+      `Cancel order #${order._id.slice(-6).toUpperCase()}?\n\nTotal: ₦${order.total?.toLocaleString()}`,
+      [
+        { text: 'Never mind', style: 'cancel' },
+        {
+          text: 'Cancel Order',
+          style: 'destructive',
+          onPress: () => doCancelOrder(order._id, 'Cancelled by shop')
+        }
+      ]
+    );
+  };
+
+  const doCancelOrder = async (orderId, reason) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/orders/${orderId}/cancel`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason })
+      });
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Cancelled', 'Your order has been cancelled.');
+        loadOrders();
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to cancel');
+      }
+    } catch (error) {
+      Alert.alert('❌ Error', 'Could not cancel order');
+    }
+  };
+
+  // ============================================================
   // OPEN CHAT (Shop version - chats with distributor or rider)
   // ============================================================
   const openChat = async (order) => {
     setChatOrderId(order._id);
     setShowChat(true);
 
-    // Shop chats with distributor first, then rider
     if (order.distributorId) {
       setChatReceiver({
         id: order.distributorId._id || order.distributorId,
@@ -437,6 +477,11 @@ export default function ShopScreen() {
                 <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
               </View>
               <View style={styles.orderActions}>
+                {order.status === 'pending' && (
+                  <TouchableOpacity style={styles.cancelOrderButton} onPress={() => cancelOrder(order)}>
+                    <Text style={styles.cancelOrderButtonText}>❌</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity style={styles.chatButton} onPress={() => openChat(order)}>
                   <Text style={styles.chatButtonText}>💬</Text>
                 </TouchableOpacity>
@@ -477,50 +522,6 @@ export default function ShopScreen() {
       </View>
     </>
   );
-
-  // ============================================================
-  // CANCEL ORDER
-  // ============================================================
-  const cancelOrder = async (order) => {
-      Alert.prompt(
-          '❌ Cancel Order',
-          `Why are you cancelling order #${order._id.slice(-6).toUpperCase()}?`,
-          [
-              { text: 'Never mind', style: 'cancel' },
-              {
-                  text: 'Cancel Order',
-                  style: 'destructive',
-                  onPress: async (reason) => {
-                      if (!reason || !reason.trim()) {
-                        Alert.alert('⚠️ Missing Reason', 'Please provide a reason.');
-                        return;
-                      }
-                      try {
-                          const token = await AsyncStorage.getItem('token');
-                          const response = await fetch(`${API_URL}/orders/${order._id}/cancel`, {
-                              method: 'PATCH',
-                              headers: {
-                                  'Authorization': `Bearer ${token}`,
-                                  'Content-Type': 'application/json'
-                              },
-                              body: JSON.stringify({ reason: reason.trim() })
-                          });
-                          const data = await response.json();
-                          if (data.success) {
-                              Alert.alert('✅ Cancelled', 'Your order has been cancelled.');
-                              loadOrders();
-                          } else {
-                              Alert.alert('❌ Error', data.error || 'Failed to cancel');
-                          }
-                      } catch (error) {
-                          Alert.alert('❌ Error', 'Could not cancel order');
-                      }
-                  }
-              }
-          ],
-          'plain-text'
-      );
-  };
 
   // ============================================================
   // RENDER SETTINGS
@@ -774,6 +775,8 @@ const styles = StyleSheet.create({
   ratedText: { color: COLORS.secondary, fontSize: 16, fontWeight: '600' },
   chatButton: { backgroundColor: '#6C5CE7', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
   chatButtonText: { color: '#FFFFFF', fontSize: 14 },
+  cancelOrderButton: { backgroundColor: '#E17055', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
+  cancelOrderButtonText: { color: '#FFFFFF', fontSize: 14 },
   productItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },
   productName: { fontSize: 16, fontWeight: '600', color: COLORS.primary },
   productPrice: { fontSize: 14, fontWeight: '700', color: COLORS.secondary, marginTop: 2 },
@@ -835,14 +838,4 @@ const styles = StyleSheet.create({
   chatInput: { flex: 1, backgroundColor: COLORS.background, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, maxHeight: 100, borderWidth: 1, borderColor: COLORS.lightGray },
   chatSendButton: { marginLeft: 8, backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20 },
   chatSendText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
-  cancelButton: {
-    backgroundColor: '#E17055',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-},
-cancelButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-},
 });

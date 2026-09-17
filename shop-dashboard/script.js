@@ -631,6 +631,43 @@ async function changePassword(event) {
 }
 
 // ============================================================
+// CANCEL ORDER (Shop)
+// ============================================================
+async function cancelShopOrder(orderId) {
+    const reason = prompt('Why are you cancelling this order?\n\nExamples:\n- Ordered by mistake\n- Found cheaper elsewhere\n- No longer needed');
+
+    if (reason === null) return;
+
+    if (!reason.trim()) {
+        showToast('⚠️ Please provide a reason');
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/orders/${orderId}/cancel`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ reason: reason.trim() })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showToast('✅ Order cancelled');
+            loadDashboard();
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to cancel'));
+        }
+    } catch (error) {
+        console.error('Cancel error:', error);
+        showToast('❌ Could not cancel order');
+    }
+}
+
+// ============================================================
 // DEACTIVATE ACCOUNT
 // ============================================================
 function deactivateAccount() {

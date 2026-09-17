@@ -78,4 +78,26 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// ============================================================
+// UPDATE NOTIFICATION PREFERENCES - PATCH /api/shops/:id/notification-prefs
+// ============================================================
+router.patch('/:id/notification-prefs', auth, async (req, res) => {
+    try {
+        const { sms, push } = req.body;
+        const shop = await Shop.findById(req.params.id);
+        if (!shop) return res.status(404).json({ success: false, error: 'Shop not found' });
+
+        shop.notificationPrefs = {
+            sms: typeof sms === 'boolean' ? sms : (shop.notificationPrefs?.sms ?? true),
+            push: typeof push === 'boolean' ? push : (shop.notificationPrefs?.push ?? true),
+        };
+        await shop.save();
+
+        res.json({ success: true, notificationPrefs: shop.notificationPrefs });
+    } catch (error) {
+        console.error('Update notification prefs error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 module.exports = router;

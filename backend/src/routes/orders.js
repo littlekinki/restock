@@ -11,6 +11,17 @@ const callService = require('../services/callService');
 const pushService = require('../services/pushService');
 
 // ============================================================
+// ✅ NOTIFICATION PREFERENCE HELPERS
+// ============================================================
+function canSendSms(user) {
+  return user?.notificationPrefs?.sms !== false;
+}
+
+function canSendPush(user) {
+  return user?.notificationPrefs?.push !== false;
+}
+
+// ============================================================
 // CREATE ORDER - POST /api/orders
 // ============================================================
 router.post('/', auth, async (req, res) => {
@@ -219,18 +230,23 @@ router.patch('/:id/status', auth, async (req, res) => {
 
         await order.save();
 
-        // ✅ SEND SMS NOTIFICATION TO SHOP OWNER
+        // ✅ SEND SMS NOTIFICATION TO SHOP OWNER (respect prefs)
         try {
-            await smsService.notifyShopOrderUpdate(order, status);
-            console.log(`📱 SMS notification sent for order ${order._id}`);
+            const shop = await Shop.findById(order.shopId);
+            if (shop && canSendSms(shop)) {
+                await smsService.notifyShopOrderUpdate(order, status);
+                console.log(`📱 SMS notification sent for order ${order._id}`);
+            } else {
+                console.log(`🔕 SMS skipped for order ${order._id} — shop disabled SMS`);
+            }
         } catch (smsError) {
             console.error('⚠️ SMS notification failed:', smsError.message);
         }
 
-        // ✅ SEND PUSH NOTIFICATION TO SHOP OWNER
+        // ✅ SEND PUSH NOTIFICATION TO SHOP OWNER (respect prefs)
         try {
             const shop = await Shop.findById(order.shopId);
-            if (shop && shop.pushToken) {
+            if (shop && shop.pushToken && canSendPush(shop)) {
                 const statusMessages = {
                     confirmed: 'Your order has been confirmed!',
                     picked_up: 'Your order has been picked up by a rider!',
@@ -244,6 +260,8 @@ router.patch('/:id/status', auth, async (req, res) => {
                     { orderId: order._id }
                 );
                 console.log(`🔔 Push notification sent for order ${order._id}`);
+            } else if (shop && !canSendPush(shop)) {
+                console.log(`🔕 Push skipped for order ${order._id} — shop disabled push`);
             }
         } catch (pushError) {
             console.error('⚠️ Push notification failed:', pushError.message);
@@ -323,8 +341,8 @@ router.patch('/:id/assign-rider', auth, async (req, res) => {
             return res.status(404).json({ success: false, error: 'Rider not found' });
         }
 
-        // ✅ Notify the rider via push
-        if (rider.pushToken) {
+        // ✅ Notify the rider via push (respect prefs)
+        if (rider.pushToken && canSendPush(rider)) {
             try {
                 await pushService.sendPushNotification(
                     rider.pushToken,
@@ -336,6 +354,8 @@ router.patch('/:id/assign-rider', auth, async (req, res) => {
             } catch (pushError) {
                 console.error('⚠️ Push failed:', pushError.message);
             }
+        } else if (rider.pushToken) {
+            console.log(`🔕 Push to rider ${rider.fullName} skipped — rider disabled push`);
         }
 
         // Generate 4-digit PIN
@@ -496,6 +516,96 @@ router.post('/:id/rate', auth, async (req, res) => {
 
     } catch (error) {
         console.error('Rating error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// CANCEL ORDER - PATCH /api/orders/:id/cancel
+// ============================================================
+router.patch('/:id/cancel', auth, async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const role = req.user.role;
+
+        const order = await Order.findById(req.params.id)
+            .populate('shopId', 'businessName phone pushToken notificationPrefs')
+            .populate('distributorId', 'businessName phone pushToken notificationPrefs')
+            .populate('riderId', 'fullName phone pushToken notificationPrefs');
+
+        if (!order) {
+            return res.status(404).json({ success: false, error: 'Order not found' });
+        }
+
+        // Check if order can be cancelled based on status
+        const nonCancellableStatuses = ['picked_up', 'out_for_delivery', 'delivered', 'cancelled'];
+        if (nonCancellableStatuses.includes(order.status)) {
+            return res.status(400).json({
+                success: false,
+                error: `Cannot cancel an order that is already ${order.status}`
+            });
+        }
+
+        // Only shop or distributor can cancel
+        if (role !== 'shop' && role !== 'distributor' && role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                error: 'Only shops, distributors, or admins can cancel orders'
+            });
+        }
+
+        // Update order
+        order.status = 'cancelled';
+        order.cancelReason = reason || `Cancelled by ${role}`;
+        order.cancelledBy = role;
+        order.cancelledAt = new Date();
+        order.updatedAt = Date.now();
+        order.trackingUpdates.push({
+            status: 'cancelled',
+            note: `Order cancelled by ${role}. Reason: ${reason || 'No reason given'}`
+        });
+
+        await order.save();
+        // Send SMS notification to the other party (respect prefs)
+        try {
+            const recipient = role === 'shop' ? order.distributorId : order.shopId;
+            if (recipient?.phone && canSendSms(recipient)) {
+                const senderLabel = role === 'shop' ? 'the shop' : 'the distributor';
+                const smsMessage = `📦 Restock Order Cancelled\n\nOrder #${order._id.slice(-6).toUpperCase()} has been cancelled by ${senderLabel}.\n\nReason: ${reason || 'No reason given'}\n\n- Restock`;
+                await smsService.sendSMS(recipient.phone, smsMessage);
+            } else if (recipient?.phone) {
+                console.log(`🔕 Cancel SMS skipped — recipient disabled SMS`);
+            }
+        } catch (smsError) {
+            console.error('⚠️ SMS notification failed:', smsError.message);
+        }
+
+        // Send push notification (respect prefs)
+        try {
+            const recipient = role === 'shop' ? order.distributorId : order.shopId;
+            if (recipient?.pushToken && canSendPush(recipient)) {
+                const senderLabel = role === 'shop' ? 'the shop' : 'the distributor';
+                await pushService.sendPushNotification(
+                    recipient.pushToken,
+                    '❌ Order Cancelled',
+                    `Order #${order._id.slice(-6).toUpperCase()} was cancelled by ${senderLabel}.`,
+                    { orderId: order._id }
+                );
+            } else if (recipient?.pushToken) {
+                console.log(`🔕 Cancel push skipped — recipient disabled push`);
+            }
+        } catch (pushError) {
+            console.error('⚠️ Push notification failed:', pushError.message);
+        }
+
+        res.json({
+            success: true,
+            order,
+            message: 'Order cancelled successfully'
+        });
+
+    } catch (error) {
+        console.error('Cancel order error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
