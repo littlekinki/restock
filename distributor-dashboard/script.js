@@ -225,29 +225,43 @@ async function openOrderDetail(orderId) {
         
         document.getElementById('orderDetail').innerHTML = detailHtml;
         
-        const confirmBtn = document.getElementById('confirmBtn');
-        if (order.status === 'pending' || order.status === 'confirmed') {
-            confirmBtn.style.display = 'inline-block';
-            confirmBtn.setAttribute('data-order-id', orderId);
-            
-            if (order.status === 'pending') {
-                confirmBtn.textContent = '✅ Confirm & Prepare';
-                confirmBtn.className = 'btn btn-primary';
-                confirmBtn.onclick = function() {
-                    console.log('🟢 Confirm button clicked for order:', this.getAttribute('data-order-id'));
-                    confirmOrder();
-                };
+       const confirmBtn = document.getElementById('confirmBtn');
+       const cancelBtn = document.getElementById('cancelBtn');
+
+       if (order.status === 'pending' || order.status === 'confirmed') {
+           confirmBtn.style.display = 'inline-block';
+           confirmBtn.setAttribute('data-order-id', orderId);
+
+    
+           if (cancelBtn) {
+               cancelBtn.style.display = 'inline-block';
+               cancelBtn.onclick = function() {
+                   console.log('🔴 Cancel button clicked for order:', orderId);
+                   selectedOrderId = orderId;
+                   cancelOrder();
+               };
+           }
+
+           if (order.status === 'pending') {
+               confirmBtn.textContent = '✅ Confirm & Prepare';
+               confirmBtn.className = 'btn btn-primary';
+               confirmBtn.onclick = function() {
+                   console.log('🟢 Confirm button clicked for order:', this.getAttribute('data-order-id'));
+                   confirmOrder();
+               };
             } else {
-                confirmBtn.textContent = '📍 Assign Nearby Rider';
-                confirmBtn.className = 'btn btn-success';
-                confirmBtn.onclick = function() {
-                    console.log('🟢 Assign rider button clicked for order:', this.getAttribute('data-order-id'));
-                    confirmOrder();
-                };
+               confirmBtn.textContent = '📍 Assign Nearby Rider';
+               confirmBtn.className = 'btn btn-success';
+               confirmBtn.onclick = function() {
+                   console.log('🟢 Assign rider button clicked for order:', this.getAttribute('data-order-id'));
+                   confirmOrder();
+               };
             }
-        } else {
-            confirmBtn.style.display = 'none';
-        }
+       } else {
+           confirmBtn.style.display = 'none';
+           // ✅ Hide cancel button for other statuses
+           if (cancelBtn) cancelBtn.style.display = 'none';
+       }
         
         modal.classList.add('active');
         

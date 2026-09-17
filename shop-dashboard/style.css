@@ -97,6 +97,21 @@ body {
   background: var(--gray-100);
 }
 
+.cancel-btn {
+    background: #E17055;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+}
+.cancel-btn:hover {
+    background: #D63031;
+}
+
 /* Shop Selector */
 .shop-selector {
   background: white;

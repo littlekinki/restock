@@ -239,6 +239,52 @@ export default function DistributorScreen() {
     }
   };
 
+    // ============================================================
+  // CANCEL ORDER
+  // ============================================================
+  const cancelOrder = (order) => {
+    Alert.alert(
+      '❌ Cancel Order',
+      `Order #${order._id.slice(-6).toUpperCase()}\n` +
+      `Total: ₦${order.total?.toLocaleString()}\n\n` +
+      `Are you sure you want to cancel this order?`,
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: () => doCancelOrder(order._id)
+        }
+      ]
+    );
+  };
+
+  const doCancelOrder = async (orderId) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: 'cancelled',
+          note: 'Order cancelled by distributor'
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Cancelled', 'Order has been cancelled.');
+        loadOrders();
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to cancel order');
+      }
+    } catch (error) {
+      Alert.alert('❌ Error', 'Could not cancel order');
+    }
+  };
+
   // ============================================================
   // SAVE NEW PRODUCT
   // ============================================================
@@ -621,6 +667,14 @@ export default function DistributorScreen() {
                 <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
               </TouchableOpacity>
               <View style={styles.orderActions}>
+                {order.status === 'pending' && (
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => cancelOrder(order)}
+                  >
+                    <Text style={styles.cancelButtonText}>❌</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   style={styles.chatButton}
                   onPress={() => openChat(order)}

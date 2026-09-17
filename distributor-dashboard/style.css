@@ -223,6 +223,14 @@ body {
     background: var(--gray-300);
 }
 
+.btn-danger {
+    background: #E17055;
+    color: white;
+}
+.btn-danger:hover {
+    background: #D63031;
+}
+
 /* Stats */
 .stats {
     display: grid;

@@ -479,6 +479,50 @@ export default function ShopScreen() {
   );
 
   // ============================================================
+  // CANCEL ORDER
+  // ============================================================
+  const cancelOrder = async (order) => {
+      Alert.prompt(
+          '❌ Cancel Order',
+          `Why are you cancelling order #${order._id.slice(-6).toUpperCase()}?`,
+          [
+              { text: 'Never mind', style: 'cancel' },
+              {
+                  text: 'Cancel Order',
+                  style: 'destructive',
+                  onPress: async (reason) => {
+                      if (!reason || !reason.trim()) {
+                        Alert.alert('⚠️ Missing Reason', 'Please provide a reason.');
+                        return;
+                      }
+                      try {
+                          const token = await AsyncStorage.getItem('token');
+                          const response = await fetch(`${API_URL}/orders/${order._id}/cancel`, {
+                              method: 'PATCH',
+                              headers: {
+                                  'Authorization': `Bearer ${token}`,
+                                  'Content-Type': 'application/json'
+                              },
+                              body: JSON.stringify({ reason: reason.trim() })
+                          });
+                          const data = await response.json();
+                          if (data.success) {
+                              Alert.alert('✅ Cancelled', 'Your order has been cancelled.');
+                              loadOrders();
+                          } else {
+                              Alert.alert('❌ Error', data.error || 'Failed to cancel');
+                          }
+                      } catch (error) {
+                          Alert.alert('❌ Error', 'Could not cancel order');
+                      }
+                  }
+              }
+          ],
+          'plain-text'
+      );
+  };
+
+  // ============================================================
   // RENDER SETTINGS
   // ============================================================
   const renderSettings = () => (
@@ -791,4 +835,14 @@ const styles = StyleSheet.create({
   chatInput: { flex: 1, backgroundColor: COLORS.background, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, maxHeight: 100, borderWidth: 1, borderColor: COLORS.lightGray },
   chatSendButton: { marginLeft: 8, backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20 },
   chatSendText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
+  cancelButton: {
+    backgroundColor: '#E17055',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+},
+cancelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+},
 });

@@ -194,6 +194,7 @@ function renderOrders(ordersToRender) {
             `${i.productName} x${i.quantity}`
         ).join(', ');
 
+
         const totalItems = order.items.reduce((sum, i) => sum + i.quantity, 0);
 
         const showPin = order.deliveryPIN && (order.status === 'picked_up' || order.status === 'out_for_delivery');
@@ -221,6 +222,9 @@ function renderOrders(ordersToRender) {
                 <div class="order-meta">
                     <div class="order-total">₦${order.total.toLocaleString()}</div>
                     <span class="order-status ${order.status}">${order.status.toUpperCase()}</span>
+                    ${order.status === 'pending' ? `
+                        <button class="cancel-btn" onclick="cancelShopOrder('${order._id}')">❌ Cancel</button>
+                        ` : ''}
                     ${order.status === 'delivered' ? `
                         <button class="reorder-btn" onclick="reorder('${order._id}')">
                             🔄 Reorder

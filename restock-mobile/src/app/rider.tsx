@@ -584,6 +584,9 @@ export default function RiderScreen() {
                   {(delivery.status === 'picked_up' || delivery.status === 'out_for_delivery') && (
                     <Text style={styles.actionHint}>Tap to enter PIN →</Text>
                   )}
+                  {delivery.status === 'cancelled' && (
+                    <Text style={styles.cancelledHint}>❌ Cancelled by {delivery.cancelledBy}</Text>
+                  )}
                 </TouchableOpacity>
                 <View style={styles.deliveryRight}>
                   <TouchableOpacity style={styles.chatButton} onPress={() => openChat(delivery)}>
@@ -923,4 +926,5 @@ const styles = StyleSheet.create({
   chatInput: { flex: 1, backgroundColor: COLORS.background, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, maxHeight: 100, borderWidth: 1, borderColor: COLORS.lightGray },
   chatSendButton: { marginLeft: 8, backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20 },
   chatSendText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
+  cancelledHint: { fontSize: 11, color: COLORS.danger, fontWeight: '600', marginTop: 4, },
 });
