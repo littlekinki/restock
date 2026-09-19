@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const vision = require('@google-cloud/vision');
+const auth = require('../middleware/auth'); 
 
 // Configure multer for image upload
 const upload = multer({ storage: multer.memoryStorage() });
@@ -14,7 +15,7 @@ const client = new vision.ImageAnnotatorClient({
 // ============================================================
 // AI IMAGE ORDERING
 // ============================================================
-router.post('/ai-image', upload.single('image'), async (req, res) => {
+router.post('/ai-image', auth, upload.single('image'), async (req, res) => {
     try {
         const imageBuffer = req.file.buffer;
 

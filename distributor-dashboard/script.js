@@ -815,6 +815,12 @@ async function loadSettingsData() {
                 document.getElementById('settingsBankName').value = distributor.bankDetails?.bankName || '';
                 document.getElementById('settingsAccountNumber').value = distributor.bankDetails?.accountNumber || '';
                 document.getElementById('settingsAccountName').value = distributor.bankDetails?.accountName || '';
+
+                // Notification preferences
+                const smsToggle = document.getElementById('smsNotifications');
+                const pushToggle = document.getElementById('pushNotifications');
+                if (smsToggle) smsToggle.checked = distributor.notificationPrefs?.sms !== false;
+                if (pushToggle) pushToggle.checked = distributor.notificationPrefs?.push !== false;
             }
         }
     } catch (error) {
@@ -882,14 +888,31 @@ async function savePayment(event) {
 // ============================================================
 async function saveNotifications() {
     const smsEnabled = document.getElementById('smsNotifications').checked;
-    const whatsappEnabled = document.getElementById('whatsappNotifications').checked;
-    
-    await updateDistributorSettings({
-        notifications: {
-            sms: smsEnabled,
-            whatsapp: whatsappEnabled
+    const pushEnabled = document.getElementById('pushNotifications').checked;
+
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+        const response = await fetch(`${API_URL}/distributors/${user.id}/notification-prefs`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ sms: smsEnabled, push: pushEnabled })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showToast('✅ Notification settings saved!');
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to save'));
         }
-    }, 'Notification settings saved!');
+    } catch (error) {
+        console.error('Save notifications error:', error);
+        showToast('❌ Could not save notification settings');
+    }
 }
 
 // ============================================================

@@ -15,6 +15,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 
 // Routes
+const aiOrderRoutes = require('./routes/ai-order');
 const orderRoutes = require('./routes/orders');
 const shopRoutes = require('./routes/shops');
 const distributorRoutes = require('./routes/distributors');
@@ -24,6 +25,7 @@ const smsRoutes = require('./routes/sms');
 const productRequestRoutes = require('./routes/productRequests');
 const chatRoutes = require('./routes/chat');
 
+app.use('/api/orders', aiOrderRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/shops', shopRoutes);
 app.use('/api/distributors', distributorRoutes);

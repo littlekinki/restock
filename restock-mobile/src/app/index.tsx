@@ -17,14 +17,15 @@ import { router } from 'expo-router';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
 
 const COLORS = {
-  primary: '#01311F',       
-  primaryLight: '#4DBE18',   
-  primaryDark: '#002B1C',    
-  secondary: '#4DBE18',      
-  background: '#FAF8F6',     
+  primary: '#01311F',
+  primaryLight: '#4DBE18',
+  primaryDark: '#002B1C',
+  secondary: '#4DBE18',
+  background: '#FAF8F6',
   white: '#FFFFFF',
   gray: '#6C757D',
   lightGray: '#E9ECEF',
+  placeholder: '#8E8E93',
 };
 
 const API_URL = 'https://restock-backend-zkrx.onrender.com/api';
@@ -32,7 +33,7 @@ const API_URL = 'https://restock-backend-zkrx.onrender.com/api';
 export default function LoginScreen() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('shop');
+  const [role, setRole] = useState<'shop' | 'distributor' | 'rider' | 'admin'>('shop');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -48,7 +49,7 @@ export default function LoginScreen() {
       navigateToDashboard(userData.role);
     }
   };
-  
+
   const navigateToDashboard = (role: string) => {
     if (role === 'shop') {
       router.replace('/shop');
@@ -76,37 +77,44 @@ export default function LoginScreen() {
       });
 
       const data = await response.json();
+      console.log('LOGIN RESPONSE:', JSON.stringify(data));
 
       if (data.success) {
         await AsyncStorage.setItem('token', data.token);
         await AsyncStorage.setItem('user', JSON.stringify(data.user));
 
-      const pushToken = await registerForPushNotificationsAsync();
-      if (pushToken) {
-        // Save the push token to the backend for this user
-        try {
-          const authToken = localStorage.getItem('token');
-          await fetch(`${API_URL}/auth/push-token`, {
-            method: 'PATCH',
-            headers: {
-              'Authorization': `Bearer ${authToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-              userId: data.user.id, 
-              role: data.user.role, 
-              pushToken 
-            }),
-          });
-        } catch (e) {
-          console.log('Failed to save push token:', e);
-        }
-      }
+        // ✅ Navigate immediately — don't block on push token
         navigateToDashboard(role);
+
+        // ✅ Register push token in the background (fire-and-forget)
+        registerForPushNotificationsAsync()
+          .then(async (pushToken) => {
+            if (!pushToken) return;
+            try {
+              await fetch(`${API_URL}/auth/push-token`, {
+                method: 'PATCH',
+                headers: {
+                  'Authorization': `Bearer ${data.token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  userId: data.user.id,
+                  role: data.user.role,
+                  pushToken,
+                }),
+              });
+              console.log('✅ Push token saved');
+            } catch (e) {
+              console.log('⚠️ Failed to save push token:', e);
+            }
+          })
+          .catch((e) => console.log('⚠️ Push registration failed:', e));
+
       } else {
         Alert.alert('Login Failed', data.error || 'Invalid credentials');
       }
     } catch (error) {
+      console.log('Login error:', error);
       Alert.alert('Error', 'Login failed. Please try again.');
     } finally {
       setLoading(false);
@@ -130,7 +138,7 @@ export default function LoginScreen() {
           <Text style={styles.tagline}>WE RESTOCK, YOU FOCUS</Text>
 
           <View style={styles.roleContainer}>
-            {['shop', 'distributor', 'rider'].map((r) => (
+            {(['shop', 'distributor', 'rider'] as const).map((r) => (
               <TouchableOpacity
                 key={r}
                 style={[
@@ -154,6 +162,7 @@ export default function LoginScreen() {
           <TextInput
             style={styles.input}
             placeholder="Phone Number"
+            placeholderTextColor={COLORS.placeholder}
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
@@ -163,19 +172,20 @@ export default function LoginScreen() {
             <TextInput
               style={styles.passwordInput}
               placeholder="Password"
+              placeholderTextColor={COLORS.placeholder}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
-           />
-           <TouchableOpacity
-             style={styles.eyeButton}
-             onPress={() => setShowPassword(!showPassword)}
-           >
-            <Text style={styles.eyeIcon}>
-              {showPassword ? '👁️' : '🙈'}
-            </Text>
-           </TouchableOpacity>
-         </View>
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Text style={styles.eyeIcon}>
+                {showPassword ? '👁️' : '🙈'}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
             style={styles.loginButton}
@@ -188,8 +198,7 @@ export default function LoginScreen() {
               <Text style={styles.loginButtonText}>Log In</Text>
             )}
           </TouchableOpacity>
-          
-          
+
           <TouchableOpacity onPress={() => router.push('/register')}>
             <Text style={styles.registerLink}>
               Don't have an account? Sign up
@@ -265,6 +274,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.lightGray,
     fontSize: 16,
+    color: COLORS.primary,
   },
   loginButton: {
     backgroundColor: COLORS.primary,
@@ -286,23 +296,24 @@ const styles = StyleSheet.create({
   },
 
   passwordContainer: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: COLORS.white,
-  borderRadius: 12,
-  borderWidth: 1,
-  borderColor: COLORS.lightGray,
-  marginBottom: 16,
-},
-passwordInput: {
-  flex: 1,
-  padding: 16,
-  fontSize: 16,
-},
-eyeButton: {
-  padding: 16,
-},
-eyeIcon: {
-  fontSize: 20,
-},
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.lightGray,
+    marginBottom: 16,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 16,
+    fontSize: 16,
+    color: COLORS.primary,
+  },
+  eyeButton: {
+    padding: 16,
+  },
+  eyeIcon: {
+    fontSize: 20,
+  },
 });

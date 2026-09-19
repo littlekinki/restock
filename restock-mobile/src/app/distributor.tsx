@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   TextInput,
   Modal,
+  Switch,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -25,6 +26,23 @@ export default function DistributorScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ total: 0, pending: 0, confirmed: 0, delivered: 0 });
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Settings state
+  const [profile, setProfile] = useState({
+    businessName: '', ownerName: '', phone: '', email: '',
+    street: '', city: '', state: '', landmark: '',
+    bankName: '', accountNumber: '', accountName: '',
+  });
+  const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [savingBank, setSavingBank] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  // Notification preferences
+  const [notifPrefs, setNotifPrefs] = useState({ sms: true, push: true });
+  const [savingNotifPrefs, setSavingNotifPrefs] = useState(false);
 
   // Product form state
   const [showProductForm, setShowProductForm] = useState(false);
@@ -108,6 +126,47 @@ export default function DistributorScreen() {
     }
   };
 
+  // ============================================================
+  // LOAD SETTINGS DATA
+  // ============================================================
+  const loadSettingsData = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+
+      const response = await fetch(`${API_URL}/distributors`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        const d = data.distributors.find(x => x._id === currentUser.id);
+        if (d) {
+          setProfile({
+            businessName: d.businessName || '',
+            ownerName: d.ownerName || '',
+            phone: d.phone || '',
+            email: d.email || '',
+            street: d.address?.street || '',
+            city: d.address?.city || '',
+            state: d.address?.state || '',
+            landmark: d.address?.landmark || '',
+            bankName: d.bankDetails?.bankName || '',
+            accountNumber: d.bankDetails?.accountNumber || '',
+            accountName: d.bankDetails?.accountName || '',
+          });
+          setNotifPrefs({
+            sms: d.notificationPrefs?.sms !== false,
+            push: d.notificationPrefs?.push !== false,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Load settings error:', error);
+    }
+  };
+
   const handleLogout = async () => {
     await AsyncStorage.removeItem('token');
     await AsyncStorage.removeItem('user');
@@ -118,6 +177,184 @@ export default function DistributorScreen() {
     setRefreshing(true);
     loadOrders();
     loadProducts();
+  };
+
+  // ============================================================
+  // SAVE PROFILE
+  // ============================================================
+  const saveProfile = async () => {
+    if (!profile.businessName || !profile.ownerName || !profile.phone) {
+      Alert.alert('⚠️ Missing Fields', 'Please fill in business name, owner name, and phone.');
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+      const response = await fetch(`${API_URL}/distributors/${currentUser.id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: profile.businessName,
+          ownerName: profile.ownerName,
+          phone: profile.phone,
+          email: profile.email,
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        const updatedUser = { ...currentUser, name: profile.businessName, phone: profile.phone };
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        Alert.alert('✅ Saved', 'Profile updated.');
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to save');
+      }
+    } catch (error) {
+      Alert.alert('❌ Error', 'Could not save profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  // ============================================================
+  // SAVE ADDRESS
+  // ============================================================
+  const saveAddress = async () => {
+    setSavingAddress(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+      const response = await fetch(`${API_URL}/distributors/${currentUser.id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: {
+            street: profile.street,
+            city: profile.city,
+            state: profile.state,
+            landmark: profile.landmark,
+          }
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Saved', 'Address updated.');
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to save');
+      }
+    } catch (error) {
+      Alert.alert('❌ Error', 'Could not save address');
+    } finally {
+      setSavingAddress(false);
+    }
+  };
+
+  // ============================================================
+  // SAVE BANK DETAILS
+  // ============================================================
+  const saveBankDetails = async () => {
+    setSavingBank(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+      const response = await fetch(`${API_URL}/distributors/${currentUser.id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bankDetails: {
+            bankName: profile.bankName,
+            accountNumber: profile.accountNumber,
+            accountName: profile.accountName,
+          }
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Saved', 'Bank details updated.');
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to save');
+      }
+    } catch (error) {
+      Alert.alert('❌ Error', 'Could not save bank details');
+    } finally {
+      setSavingBank(false);
+    }
+  };
+
+  // ============================================================
+  // SAVE NOTIFICATION PREFERENCES
+  // ============================================================
+  const saveNotifPrefs = async () => {
+    setSavingNotifPrefs(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+      const response = await fetch(`${API_URL}/distributors/${currentUser.id}/notification-prefs`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sms: notifPrefs.sms, push: notifPrefs.push })
+      });
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Saved', 'Notification preferences updated.');
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to save');
+      }
+    } catch (error) {
+      Alert.alert('❌ Error', 'Could not save preferences');
+    } finally {
+      setSavingNotifPrefs(false);
+    }
+  };
+
+  // ============================================================
+  // CHANGE PASSWORD
+  // ============================================================
+  const changePassword = async () => {
+    if (!passwords.current || !passwords.new || !passwords.confirm) {
+      Alert.alert('⚠️ Missing Fields', 'Please fill in all password fields.');
+      return;
+    }
+    if (passwords.new !== passwords.confirm) {
+      Alert.alert('⚠️ Error', 'New passwords do not match.');
+      return;
+    }
+    if (passwords.new.length < 6) {
+      Alert.alert('⚠️ Error', 'Password must be at least 6 characters.');
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+      const response = await fetch(`${API_URL}/auth/change-password`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          role: 'distributor',
+          currentPassword: passwords.current,
+          newPassword: passwords.new
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Success', 'Password changed!');
+        setPasswords({ current: '', new: '', confirm: '' });
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to change password');
+      }
+    } catch (error) {
+      Alert.alert('❌ Error', 'Could not change password');
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   // ============================================================
@@ -239,7 +476,7 @@ export default function DistributorScreen() {
     }
   };
 
-    // ============================================================
+  // ============================================================
   // CANCEL ORDER
   // ============================================================
   const cancelOrder = (order) => {
@@ -258,7 +495,7 @@ export default function DistributorScreen() {
       ]
     );
   };
-  
+
   const doCancelOrder = async (orderId) => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -642,7 +879,10 @@ export default function DistributorScreen() {
           <Text style={styles.cardTitle}>Payments</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.card} onPress={() => setActiveTab('settings')}>
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => { setActiveTab('settings'); loadSettingsData(); }}
+        >
           <Text style={styles.cardIcon}>⚙️</Text>
           <Text style={styles.cardTitle}>Settings</Text>
         </TouchableOpacity>
@@ -696,50 +936,151 @@ export default function DistributorScreen() {
       <Text style={styles.title}>⚙️ Settings</Text>
       <Text style={styles.subtitle}>Manage your account preferences.</Text>
 
-      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Profile', 'Profile settings coming soon!')}>
-        <Text style={styles.settingsIcon}>👤</Text>
-        <View style={styles.settingsText}>
-          <Text style={styles.settingsTitle}>Profile Settings</Text>
-          <Text style={styles.settingsSubtitle}>Update your business information</Text>
-        </View>
-        <Text style={styles.settingsArrow}>→</Text>
-      </TouchableOpacity>
+      {/* 🔔 Notification Preferences */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🔔 Notification Preferences</Text>
 
-      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Address', 'Address settings coming soon!')}>
-        <Text style={styles.settingsIcon}>📍</Text>
-        <View style={styles.settingsText}>
-          <Text style={styles.settingsTitle}>Address Settings</Text>
-          <Text style={styles.settingsSubtitle}>Update your pickup address</Text>
+        <View style={styles.notifRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.notifLabel}>SMS Notifications</Text>
+            <Text style={styles.notifHint}>Receive new order updates via SMS</Text>
+          </View>
+          <Switch
+            value={notifPrefs.sms}
+            onValueChange={(val) => setNotifPrefs({ ...notifPrefs, sms: val })}
+            trackColor={{ false: '#DEE2E6', true: '#4DBE18' }}
+            thumbColor="#FFFFFF"
+          />
         </View>
-        <Text style={styles.settingsArrow}>→</Text>
-      </TouchableOpacity>
 
-      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Password', 'Password settings coming soon!')}>
-        <Text style={styles.settingsIcon}>🔒</Text>
-        <View style={styles.settingsText}>
-          <Text style={styles.settingsTitle}>Change Password</Text>
-          <Text style={styles.settingsSubtitle}>Update your password</Text>
+        <View style={styles.notifRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.notifLabel}>Push Notifications</Text>
+            <Text style={styles.notifHint}>Receive new order alerts in the app</Text>
+          </View>
+          <Switch
+            value={notifPrefs.push}
+            onValueChange={(val) => setNotifPrefs({ ...notifPrefs, push: val })}
+            trackColor={{ false: '#DEE2E6', true: '#4DBE18' }}
+            thumbColor="#FFFFFF"
+          />
         </View>
-        <Text style={styles.settingsArrow}>→</Text>
-      </TouchableOpacity>
 
-      <TouchableOpacity style={styles.settingsItem} onPress={() => Alert.alert('Bank', 'Bank details settings coming soon!')}>
-        <Text style={styles.settingsIcon}>💰</Text>
-        <View style={styles.settingsText}>
-          <Text style={styles.settingsTitle}>Bank Details</Text>
-          <Text style={styles.settingsSubtitle}>Manage your payment information</Text>
-        </View>
-        <Text style={styles.settingsArrow}>→</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.saveButton} onPress={saveNotifPrefs} disabled={savingNotifPrefs}>
+          {savingNotifPrefs ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveButtonText}>💾 Save Preferences</Text>}
+        </TouchableOpacity>
+      </View>
 
-      <TouchableOpacity style={[styles.settingsItem, styles.dangerItem]} onPress={() => Alert.alert('Warning', 'Account deactivation coming soon!')}>
-        <Text style={styles.settingsIcon}>⚠️</Text>
-        <View style={styles.settingsText}>
-          <Text style={[styles.settingsTitle, styles.dangerText]}>Deactivate Account</Text>
-          <Text style={styles.settingsSubtitle}>Permanently disable your account</Text>
+      {/* 👤 Profile */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>👤 Profile Settings</Text>
+        <Text style={styles.formLabel}>Business Name</Text>
+        <TextInput style={styles.formInput} value={profile.businessName}
+          onChangeText={(text) => setProfile({ ...profile, businessName: text })}
+          placeholder="Business name" placeholderTextColor="#ADB5BD" />
+        <Text style={styles.formLabel}>Owner Name</Text>
+        <TextInput style={styles.formInput} value={profile.ownerName}
+          onChangeText={(text) => setProfile({ ...profile, ownerName: text })}
+          placeholder="Owner name" placeholderTextColor="#ADB5BD" />
+        <Text style={styles.formLabel}>Phone Number</Text>
+        <TextInput style={styles.formInput} value={profile.phone}
+          onChangeText={(text) => setProfile({ ...profile, phone: text })}
+          placeholder="Phone number" placeholderTextColor="#ADB5BD" keyboardType="phone-pad" />
+        <Text style={styles.formLabel}>Email</Text>
+        <TextInput style={styles.formInput} value={profile.email}
+          onChangeText={(text) => setProfile({ ...profile, email: text })}
+          placeholder="Email" placeholderTextColor="#ADB5BD" keyboardType="email-address" />
+        <TouchableOpacity style={styles.saveButton} onPress={saveProfile} disabled={savingProfile}>
+          {savingProfile ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveButtonText}>💾 Save Profile</Text>}
+        </TouchableOpacity>
+      </View>
+
+      {/* 📍 Address */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>📍 Address Settings</Text>
+        <Text style={styles.formLabel}>Street Address</Text>
+        <TextInput style={styles.formInput} value={profile.street}
+          onChangeText={(text) => setProfile({ ...profile, street: text })}
+          placeholder="Street address" placeholderTextColor="#ADB5BD" />
+        <View style={styles.formRow}>
+          <View style={styles.formHalf}>
+            <Text style={styles.formLabel}>City</Text>
+            <TextInput style={styles.formInput} value={profile.city}
+              onChangeText={(text) => setProfile({ ...profile, city: text })}
+              placeholder="City" placeholderTextColor="#ADB5BD" />
+          </View>
+          <View style={styles.formHalf}>
+            <Text style={styles.formLabel}>State</Text>
+            <TextInput style={styles.formInput} value={profile.state}
+              onChangeText={(text) => setProfile({ ...profile, state: text })}
+              placeholder="State" placeholderTextColor="#ADB5BD" />
+          </View>
         </View>
-        <Text style={styles.settingsArrow}>→</Text>
-      </TouchableOpacity>
+        <Text style={styles.formLabel}>Landmark</Text>
+        <TextInput style={styles.formInput} value={profile.landmark}
+          onChangeText={(text) => setProfile({ ...profile, landmark: text })}
+          placeholder="Landmark" placeholderTextColor="#ADB5BD" />
+        <TouchableOpacity style={styles.saveButton} onPress={saveAddress} disabled={savingAddress}>
+          {savingAddress ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveButtonText}>💾 Save Address</Text>}
+        </TouchableOpacity>
+      </View>
+
+      {/* 🔒 Change Password */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🔒 Change Password</Text>
+        <Text style={styles.formLabel}>Current Password</Text>
+        <TextInput style={styles.formInput} value={passwords.current}
+          onChangeText={(text) => setPasswords({ ...passwords, current: text })}
+          placeholder="Current password" placeholderTextColor="#ADB5BD" secureTextEntry={!showPassword} />
+        <Text style={styles.formLabel}>New Password</Text>
+        <TextInput style={styles.formInput} value={passwords.new}
+          onChangeText={(text) => setPasswords({ ...passwords, new: text })}
+          placeholder="New password" placeholderTextColor="#ADB5BD" secureTextEntry={!showPassword} />
+        <Text style={styles.formLabel}>Confirm New Password</Text>
+        <View style={styles.passwordRow}>
+          <TextInput style={styles.passwordInput} value={passwords.confirm}
+            onChangeText={(text) => setPasswords({ ...passwords, confirm: text })}
+            placeholder="Confirm new password" placeholderTextColor="#ADB5BD" secureTextEntry={!showPassword} />
+          <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword(!showPassword)}>
+            <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '🙈'}</Text>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity style={styles.saveButton} onPress={changePassword} disabled={savingPassword}>
+          {savingPassword ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveButtonText}>🔒 Change Password</Text>}
+        </TouchableOpacity>
+      </View>
+
+      {/* 💰 Payment */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>💰 Payment Settings</Text>
+        <Text style={styles.formLabel}>Bank Name</Text>
+        <TextInput style={styles.formInput} value={profile.bankName}
+          onChangeText={(text) => setProfile({ ...profile, bankName: text })}
+          placeholder="e.g., GTBank" placeholderTextColor="#ADB5BD" />
+        <Text style={styles.formLabel}>Account Number</Text>
+        <TextInput style={styles.formInput} value={profile.accountNumber}
+          onChangeText={(text) => setProfile({ ...profile, accountNumber: text })}
+          placeholder="e.g., 0123456789" placeholderTextColor="#ADB5BD" keyboardType="numeric" />
+        <Text style={styles.formLabel}>Account Name</Text>
+        <TextInput style={styles.formInput} value={profile.accountName}
+          onChangeText={(text) => setProfile({ ...profile, accountName: text })}
+          placeholder="e.g., Emeka Okafor" placeholderTextColor="#ADB5BD" />
+        <TouchableOpacity style={styles.saveButton} onPress={saveBankDetails} disabled={savingBank}>
+          {savingBank ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveButtonText}>💾 Save Payment Details</Text>}
+        </TouchableOpacity>
+      </View>
+
+      {/* ⚠️ Danger Zone */}
+      <View style={[styles.section, styles.dangerItem]}>
+        <Text style={[styles.sectionTitle, styles.dangerText]}>⚠️ Danger Zone</Text>
+        <Text style={styles.dangerSubtitle}>Once you deactivate your account, there is no going back.</Text>
+        <TouchableOpacity
+          style={styles.dangerButton}
+          onPress={() => Alert.alert('Warning', 'Account deactivation coming soon!')}
+        >
+          <Text style={styles.dangerButtonText}>🗑️ Deactivate Account</Text>
+        </TouchableOpacity>
+      </View>
     </>
   );
 
@@ -777,7 +1118,7 @@ export default function DistributorScreen() {
 
           <TouchableOpacity
             style={[styles.tabItem, activeTab === 'settings' && styles.tabItemActive]}
-            onPress={() => setActiveTab('settings')}
+            onPress={() => { setActiveTab('settings'); loadSettingsData(); }}
           >
             <Text style={styles.tabIcon}>⚙️</Text>
             <Text style={[styles.tabLabel, activeTab === 'settings' && styles.tabLabelActive]}>Settings</Text>
@@ -884,15 +1225,14 @@ const styles = StyleSheet.create({
   orderActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   chatButton: { backgroundColor: '#6C5CE7', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
   chatButtonText: { color: '#FFFFFF', fontSize: 14 },
+  cancelButton: { backgroundColor: '#E17055', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
+  cancelButtonText: { color: '#FFFFFF', fontSize: 14 },
   emptyText: { color: COLORS.gray, textAlign: 'center', padding: 20 },
-  settingsItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, padding: 16, borderRadius: 12, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   dangerItem: { borderWidth: 1, borderColor: COLORS.danger },
-  settingsIcon: { fontSize: 24, marginRight: 16 },
-  settingsText: { flex: 1 },
-  settingsTitle: { fontSize: 16, fontWeight: '600', color: COLORS.primary },
-  settingsSubtitle: { fontSize: 13, color: COLORS.gray, marginTop: 2 },
-  settingsArrow: { fontSize: 20, color: COLORS.gray },
   dangerText: { color: COLORS.danger },
+  dangerSubtitle: { fontSize: 13, color: COLORS.gray, marginBottom: 16 },
+  dangerButton: { backgroundColor: COLORS.danger, borderRadius: 12, padding: 14, alignItems: 'center' },
+  dangerButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   tabBar: { flexDirection: 'row', backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.lightGray, paddingVertical: 8, paddingBottom: 20 },
   tabItem: { flex: 1, alignItems: 'center', paddingVertical: 8 },
   tabItemActive: { borderTopWidth: 3, borderTopColor: COLORS.primary, marginTop: -11 },
@@ -903,15 +1243,26 @@ const styles = StyleSheet.create({
   backButton: { paddingVertical: 8, marginBottom: 8 },
   backButtonText: { color: COLORS.primary, fontSize: 16, fontWeight: '600' },
   formGroup: { marginBottom: 16 },
-  formLabel: { fontSize: 14, fontWeight: '600', color: COLORS.primary, marginBottom: 8 },
-  formInput: { backgroundColor: COLORS.white, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: COLORS.lightGray, fontSize: 16, color: COLORS.primary },
+  formLabel: { fontSize: 13, fontWeight: '600', color: COLORS.primary, marginBottom: 6, marginTop: 8 },
+  formInput: { backgroundColor: COLORS.background, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: COLORS.lightGray, fontSize: 15, color: COLORS.primary },
+  formRow: { flexDirection: 'row', gap: 12 },
+  formHalf: { flex: 1 },
   categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   categoryChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: COLORS.lightGray },
   categoryChipActive: { backgroundColor: COLORS.primary },
   categoryChipText: { fontSize: 13, color: COLORS.gray, fontWeight: '500' },
   categoryChipTextActive: { color: COLORS.white },
   saveButton: { backgroundColor: COLORS.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 16 },
-  saveButtonText: { color: COLORS.white, fontSize: 16, fontWeight: '600' },
+  saveButtonText: { color: COLORS.white, fontSize: 15, fontWeight: '600' },
+  // Notification preferences
+  notifRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },
+  notifLabel: { fontSize: 15, fontWeight: '600', color: COLORS.primary },
+  notifHint: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
+  // Password row
+  passwordRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, borderRadius: 10, borderWidth: 1, borderColor: COLORS.lightGray },
+  passwordInput: { flex: 1, padding: 14, fontSize: 15, color: COLORS.primary },
+  eyeButton: { padding: 14 },
+  eyeIcon: { fontSize: 20 },
   // Chat
   chatContainer: { flex: 1, backgroundColor: COLORS.background },
   chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },

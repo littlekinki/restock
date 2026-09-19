@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   TextInput,
   Modal,
+  Switch,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -51,6 +52,10 @@ export default function RiderScreen() {
   const [savingService, setSavingService] = useState(false);
   const [savingBank, setSavingBank] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+
+  // Notification preferences
+  const [notifPrefs, setNotifPrefs] = useState({ sms: true, push: true });
+  const [savingNotifPrefs, setSavingNotifPrefs] = useState(false);
 
   // Chat state
   const [showChat, setShowChat] = useState(false);
@@ -167,12 +172,18 @@ export default function RiderScreen() {
             accountNumber: rider.bankDetails?.accountNumber || '',
             accountName: rider.bankDetails?.accountName || '',
           });
+          setNotifPrefs({
+            sms: rider.notificationPrefs?.sms !== false,
+            push: rider.notificationPrefs?.push !== false,
+          });
         }
       }
     } catch (error) {
       console.error('Error loading settings:', error);
     }
   };
+
+
 
   // ============================================================
   // SAVE PROFILE
@@ -309,6 +320,33 @@ export default function RiderScreen() {
       Alert.alert('❌ Error', 'Could not save bank details');
     } finally {
       setSavingBank(false);
+    }
+  };
+
+  // ============================================================
+  // SAVE NOTIFICATION PREFERENCES
+  // ============================================================
+  const saveNotifPrefs = async () => {
+    setSavingNotifPrefs(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+      const response = await fetch(`${API_URL}/riders/${currentUser.id}/notification-prefs`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sms: notifPrefs.sms, push: notifPrefs.push })
+      });
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Saved', 'Notification preferences updated.');
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to save');
+      }
+    } catch (error) {
+      Alert.alert('❌ Error', 'Could not save preferences');
+    } finally {
+      setSavingNotifPrefs(false);
     }
   };
 
@@ -700,6 +738,40 @@ export default function RiderScreen() {
       </View>
 
       <View style={styles.settingsCard}>
+        <Text style={styles.settingsCardTitle}>🔔 Notification Preferences</Text>
+
+        <View style={styles.notifRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.notifLabel}>SMS Notifications</Text>
+            <Text style={styles.notifHint}>Receive delivery updates via SMS</Text>
+          </View>
+          <Switch
+            value={notifPrefs.sms}
+            onValueChange={(val) => setNotifPrefs({ ...notifPrefs, sms: val })}
+            trackColor={{ false: '#DEE2E6', true: '#4DBE18' }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+
+        <View style={styles.notifRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.notifLabel}>Push Notifications</Text>
+            <Text style={styles.notifHint}>Receive new delivery alerts in the app</Text>
+          </View>
+          <Switch
+            value={notifPrefs.push}
+            onValueChange={(val) => setNotifPrefs({ ...notifPrefs, push: val })}
+            trackColor={{ false: '#DEE2E6', true: '#4DBE18' }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+
+        <TouchableOpacity style={styles.saveButton} onPress={saveNotifPrefs} disabled={savingNotifPrefs}>
+          {savingNotifPrefs ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveButtonText}>💾 Save Preferences</Text>}
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.settingsCard}>
         <Text style={styles.settingsCardTitle}>🔒 Change Password</Text>
         <Text style={styles.formLabel}>Current Password</Text>
         <TextInput style={styles.formInput} value={passwords.current}
@@ -927,4 +999,8 @@ const styles = StyleSheet.create({
   chatSendButton: { marginLeft: 8, backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20 },
   chatSendText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
   cancelledHint: { fontSize: 11, color: COLORS.danger, fontWeight: '600', marginTop: 4, },
+  // Notification preferences
+  notifRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },
+  notifLabel: { fontSize: 15, fontWeight: '600', color: COLORS.primary },
+  notifHint: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
 });
