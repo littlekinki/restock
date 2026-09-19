@@ -327,6 +327,38 @@ export default function ShopScreen() {
   const getCartTotal = () =>
     cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
+  const getDeliveryFeeEstimate = () => {
+    // Same logic as backend so the preview matches what gets charged.
+    const unitWeights = {
+      carton: 1.0, pack: 0.5, kg: 0.25, litre: 0.25, piece: 0.05,
+    };
+    const defaultWeight = 0.25;
+
+    const cartons = Math.floor(
+      cart.reduce((sum, i) => {
+        const w = unitWeights[(i.unit || '').toLowerCase()] ?? defaultWeight;
+        return sum + i.quantity * w;
+      }, 0)
+    );
+
+    const volumeTiers = [
+      { max: 3, fee: 0 },
+      { max: 6, fee: 200 },
+      { max: 10, fee: 400 },
+      { max: 15, fee: 600 },
+      { max: 20, fee: 900 },
+    ];
+    let surcharge = 900 + Math.max(0, cartons - 20) * 50;
+    for (const t of volumeTiers) {
+      if (cartons <= t.max) { surcharge = t.fee; break; }
+    }
+
+    // No coords on the client yet → use fallback base fee
+    const baseFee = 800;
+
+    return { baseFee, surcharge, total: baseFee + surcharge, cartons };
+  };
+
   const addToCart = (product) => {
     const existing = getCartItem(product._id, product.distributorId);
     const stock = product.stock || 0;

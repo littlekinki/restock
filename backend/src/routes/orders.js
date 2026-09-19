@@ -9,6 +9,7 @@ const mongoose = require('mongoose');
 const smsService = require('../services/smsService');
 const callService = require('../services/callService');
 const pushService = require('../services/pushService');
+const { computeDeliveryFee } = require('../utils/deliveryFee');
 
 // ============================================================
 // ✅ NOTIFICATION PREFERENCE HELPERS
@@ -46,13 +47,23 @@ router.post('/', auth, async (req, res) => {
             });
         }
 
+        // ✅ Compute delivery fee
+        const shop = await Shop.findById(shopId);
+        const feeInfo = computeDeliveryFee(items, shop, distributor);
+
+        console.log('🚚 Delivery fee breakdown:', JSON.stringify(feeInfo, null, 2));
+
+        // Final total = items subtotal + delivery fee
+        const finalSubtotal = items.reduce((sum, i) => sum + (i.total || 0), 0);
+        const finalTotal = finalSubtotal + feeInfo.total;
+
         const order = new Order({
             shopId,
             distributorId,
             items,
-            subtotal,
-            deliveryFee: 0,
-            total,
+            subtotal: finalSubtotal,
+            deliveryFee: feeInfo.total,
+            total: finalTotal,
             paymentMethod: paymentMethod || 'cash_on_delivery',
             deliveryAddress: deliveryAddress || {},
             pickupAddress: {
