@@ -24,6 +24,7 @@ const whatsappRoutes = require('./routes/whatsapp');
 const smsRoutes = require('./routes/sms');
 const productRequestRoutes = require('./routes/productRequests');
 const chatRoutes = require('./routes/chat');
+const adminRoutes = require('./routes/admin');
 
 app.use('/api/orders', aiOrderRoutes);
 app.use('/api/orders', orderRoutes);
@@ -34,6 +35,7 @@ app.use('/whatsapp', whatsappRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/product-requests', productRequestRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/', (req, res) => {

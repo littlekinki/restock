@@ -105,6 +105,19 @@ const orderSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // ✅ Payout tracking (admin → distributor)
+  paidToDistributorAt: {
+    type: Date,
+    default: null,
+  },
+  paidToDistributorAmount: {
+    type: Number,
+    default: 0,
+  },
+  paidToDistributorNote: {
+    type: String,
+    default: '',
+  },
   cancelledBy: {
     type: String,
     enum: ['shop', 'distributor', 'admin', null],

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1027234930268",
+    "project_id": "restock-84033",
+    "storage_bucket": "restock-84033.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1027234930268:android:3993ed41daf62112479099",
+        "android_client_info": {
+          "package_name": "com.restockshop.restockmobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOaIMslu2OvSl2XEa6cswJjJkb4DcaeYg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

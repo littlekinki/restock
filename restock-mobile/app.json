@@ -21,6 +21,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.restockshop.restockmobile",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -34,6 +35,13 @@
     "plugins": [
       "expo-router",
       "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Restock to access your photos to upload shopping lists.",
+          "cameraPermission": "Allow Restock to use your camera to photograph shopping lists."
+        }
+      ],
       [
         "expo-splash-screen",
         {

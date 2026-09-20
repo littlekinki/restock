@@ -24,6 +24,7 @@ const API_URL = 'https://restock-backend-zkrx.onrender.com/api';
 export default function ShopScreen() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [orderFilter, setOrderFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -1216,49 +1217,122 @@ export default function ShopScreen() {
   // ============================================================
   // RENDER ORDERS TAB
   // ============================================================
-  const renderOrders = () => (
-    <>
-      <Text style={styles.title}>📦 My Orders</Text>
-      <Text style={styles.subtitle}>Track your order history.</Text>
+  const renderOrders = () => {
+    const visibleOrders = orderFilter === 'all'
+      ? orders
+      : orders.filter(o => o.status === orderFilter);
 
-      {orders.length === 0 ? (
-        <Text style={styles.emptyText}>No orders yet. Start shopping!</Text>
-      ) : (
-        orders.map((order, index) => (
-          <View key={index} style={styles.orderItem}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.orderId}>#{order._id.slice(-6).toUpperCase()}</Text>
-              <Text style={styles.orderStatus}>{order.status?.toUpperCase()}</Text>
-              <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
+    const toggleFilter = (filter) => {
+      if (orderFilter === filter) setOrderFilter('all');
+      else setOrderFilter(filter);
+    };
+
+    const itemsSummary = (order) => {
+      const items = order.items || [];
+      const names = items.slice(0, 2).map(
+        i => `${i.productName} × ${i.quantity}`
+      );
+      const extra = items.length - 2;
+      return names.join(', ') + (extra > 0 ? `  +${extra} more` : '');
+    };
+
+    const statusColor = (status) => {
+      if (status === 'delivered') return '#1B5E20';
+      if (status === 'pending') return '#E65100';
+      if (status === 'cancelled') return '#C62828';
+      if (status === 'confirmed') return '#0D47A1';
+      if (status === 'picked_up' || status === 'out_for_delivery') return '#4A148C';
+      return '#6C757D';
+    };
+
+    const statusBg = (status) => {
+      if (status === 'delivered') return '#E8F5E9';
+      if (status === 'pending') return '#FFF3E0';
+      if (status === 'cancelled') return '#FFEBEE';
+      if (status === 'confirmed') return '#E3F2FD';
+      if (status === 'picked_up' || status === 'out_for_delivery') return '#F3E5F5';
+      return '#F1F3F5';
+    };
+
+    return (
+      <>
+        <Text style={styles.title}>📦 My Orders</Text>
+        <Text style={styles.subtitle}>Track your order history.</Text>
+
+        {/* Filter chips */}
+        <View style={styles.filterChipRow}>
+          {[
+            { key: 'all', label: 'All' },
+            { key: 'pending', label: 'Pending' },
+            { key: 'confirmed', label: 'Confirmed' },
+            { key: 'picked_up', label: 'In Transit' },
+            { key: 'delivered', label: 'Delivered' },
+          ].map(f => (
+            <TouchableOpacity
+              key={f.key}
+              style={[styles.filterChip, orderFilter === f.key && styles.filterChipActive]}
+              onPress={() => setOrderFilter(f.key)}
+            >
+              <Text style={[
+                styles.filterChipText,
+                orderFilter === f.key && styles.filterChipTextActive,
+              ]}>
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {visibleOrders.length === 0 ? (
+          <Text style={styles.emptyText}>
+            {orderFilter === 'all'
+              ? 'No orders yet. Start shopping!'
+              : `No ${orderFilter.replace('_', ' ')} orders.`}
+          </Text>
+        ) : (
+          visibleOrders.map((order, index) => (
+            <View key={index} style={styles.orderItem}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.orderId}>#{order._id.slice(-6).toUpperCase()}</Text>
+                <Text style={styles.orderItemsText}>{itemsSummary(order)}</Text>
+                <View style={styles.orderStatusRow}>
+                  <View style={[styles.statusPill, { backgroundColor: statusBg(order.status) }]}>
+                    <Text style={[styles.statusPillText, { color: statusColor(order.status) }]}>
+                      {order.status?.toUpperCase().replace('_', ' ')}
+                    </Text>
+                  </View>
+                  <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
+                </View>
+              </View>
+              <View style={styles.orderActions}>
+                {order.status === 'pending' && (
+                  <TouchableOpacity style={styles.cancelOrderButton} onPress={() => cancelOrder(order)}>
+                    <Text style={styles.cancelOrderButtonText}>❌</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={styles.chatButton} onPress={() => openChat(order)}>
+                  <Text style={styles.chatButtonText}>💬</Text>
+                </TouchableOpacity>
+                {order.status === 'delivered' && !order.isRated && (
+                  <TouchableOpacity style={styles.rateButton} onPress={() => openRatingModal(order)}>
+                    <Text style={styles.rateButtonText}>⭐</Text>
+                  </TouchableOpacity>
+                )}
+                {order.status === 'delivered' && order.isRated && (
+                  <Text style={styles.ratedText}>✅</Text>
+                )}
+                {(order.status === 'picked_up' || order.status === 'out_for_delivery') && (
+                  <TouchableOpacity style={styles.trackButton} onPress={() => trackOrder(order._id)}>
+                    <Text style={styles.trackButtonText}>📍</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
-            <View style={styles.orderActions}>
-              {order.status === 'pending' && (
-                <TouchableOpacity style={styles.cancelOrderButton} onPress={() => cancelOrder(order)}>
-                  <Text style={styles.cancelOrderButtonText}>❌</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity style={styles.chatButton} onPress={() => openChat(order)}>
-                <Text style={styles.chatButtonText}>💬</Text>
-              </TouchableOpacity>
-              {order.status === 'delivered' && !order.isRated && (
-                <TouchableOpacity style={styles.rateButton} onPress={() => openRatingModal(order)}>
-                  <Text style={styles.rateButtonText}>⭐</Text>
-                </TouchableOpacity>
-              )}
-              {order.status === 'delivered' && order.isRated && (
-                <Text style={styles.ratedText}>✅</Text>
-              )}
-              {(order.status === 'picked_up' || order.status === 'out_for_delivery') && (
-                <TouchableOpacity style={styles.trackButton} onPress={() => trackOrder(order._id)}>
-                  <Text style={styles.trackButtonText}>📍</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        ))
-      )}
-    </>
-  );
+          ))
+        )}
+      </>
+    );
+  };
 
   // ============================================================
   // RENDER SHOP TAB (Browse + search + add to cart)
@@ -1784,9 +1858,25 @@ export default function ShopScreen() {
             {cart.length > 0 && (
               <View style={styles.cartFooter}>
                 <View style={styles.cartTotalRow}>
-                  <Text style={styles.cartTotalLabel}>Total:</Text>
+                  <Text style={styles.cartTotalLabel}>Subtotal:</Text>
                   <Text style={styles.cartTotalValue}>
                     ₦{getCartTotal().toLocaleString()}
+                  </Text>
+                </View>
+
+                <View style={styles.cartTotalRow}>
+                  <Text style={styles.cartTotalLabel}>
+                    🚚 Delivery ({getDeliveryFeeEstimate().cartons} cartons):
+                  </Text>
+                  <Text style={styles.cartTotalValue}>
+                    ₦{getDeliveryFeeEstimate().total.toLocaleString()}
+                  </Text>
+                </View>
+
+                <View style={[styles.cartTotalRow, { marginTop: 4 }]}>
+                  <Text style={[styles.cartTotalLabel, { fontWeight: '700' }]}>Grand Total:</Text>
+                  <Text style={[styles.cartTotalValue, { fontSize: 24 }]}>
+                    ₦{(getCartTotal() + getDeliveryFeeEstimate().total).toLocaleString()}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -2843,5 +2933,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginTop: 10,
+  },
+    // Orders improvements
+  orderItemsText: { fontSize: 13, color: COLORS.gray, marginTop: 4 },
+  orderStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  statusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  filterChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: COLORS.lightGray,
+  },
+  filterChipActive: {
+    backgroundColor: COLORS.primary,
+  },
+  filterChipText: {
+    fontSize: 13,
+    color: COLORS.gray,
+    fontWeight: '600',
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
   },
 });

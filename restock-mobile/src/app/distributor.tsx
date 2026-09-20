@@ -26,6 +26,7 @@ export default function DistributorScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ total: 0, pending: 0, confirmed: 0, delivered: 0 });
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [orderFilter, setOrderFilter] = useState('all');
 
   // Settings state
   const [profile, setProfile] = useState({
@@ -839,94 +840,194 @@ export default function DistributorScreen() {
   // ============================================================
   // RENDER DASHBOARD
   // ============================================================
-  const renderDashboard = () => (
-    <>
-      <Text style={styles.title}>📦 Distributor Dashboard</Text>
-      <Text style={styles.subtitle}>Manage orders and inventory.</Text>
+  const renderDashboard = () => {
+    const visibleOrders = orderFilter === 'all'
+      ? orders
+      : orders.filter(o => o.status === orderFilter);
 
-      <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.total}</Text>
-          <Text style={styles.statLabel}>Total Orders</Text>
+    const toggleFilter = (filter) => {
+      if (orderFilter === filter) setOrderFilter('all');
+      else setOrderFilter(filter);
+    };
+
+    const itemsSummary = (order) => {
+      const items = order.items || [];
+      const names = items.slice(0, 2).map(
+        i => `${i.productName} × ${i.quantity}`
+      );
+      const extra = items.length - 2;
+      return names.join(', ') + (extra > 0 ? `  +${extra} more` : '');
+    };
+
+    const actionHint = (order) => {
+      if (order.status === 'pending') return '👉 Tap to confirm order';
+      if (order.status === 'confirmed') return '👉 Tap to assign rider';
+      if (order.status === 'picked_up' || order.status === 'out_for_delivery')
+        return `🏍️ ${order.riderId?.fullName || 'Rider assigned'}`;
+      if (order.status === 'delivered') return '✅ Delivered';
+      if (order.status === 'cancelled') return '❌ Cancelled';
+      return '';
+    };
+
+    return (
+      <>
+        <Text style={styles.title}>📦 Distributor Dashboard</Text>
+        <Text style={styles.subtitle}>Manage orders and inventory.</Text>
+
+        {/* Stats — now tappable */}
+        <View style={styles.statsGrid}>
+          <TouchableOpacity
+            style={[
+              styles.statCard,
+              orderFilter === 'all' && styles.statCardActive,
+            ]}
+            onPress={() => setOrderFilter('all')}
+          >
+            <Text style={styles.statNumber}>{stats.total}</Text>
+            <Text style={styles.statLabel}>Total Orders</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.statCard,
+              styles.pendingCard,
+              orderFilter === 'pending' && styles.statCardActive,
+            ]}
+            onPress={() => toggleFilter('pending')}
+          >
+            <Text style={styles.statNumber}>{stats.pending}</Text>
+            <Text style={styles.statLabel}>Pending</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.statCard,
+              styles.confirmedCard,
+              orderFilter === 'confirmed' && styles.statCardActive,
+            ]}
+            onPress={() => toggleFilter('confirmed')}
+          >
+            <Text style={styles.statNumber}>{stats.confirmed}</Text>
+            <Text style={styles.statLabel}>Confirmed</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.statCard,
+              styles.deliveredCard,
+              orderFilter === 'delivered' && styles.statCardActive,
+            ]}
+            onPress={() => toggleFilter('delivered')}
+          >
+            <Text style={styles.statNumber}>{stats.delivered}</Text>
+            <Text style={styles.statLabel}>Delivered</Text>
+          </TouchableOpacity>
         </View>
-        <View style={[styles.statCard, styles.pendingCard]}>
-          <Text style={styles.statNumber}>{stats.pending}</Text>
-          <Text style={styles.statLabel}>Pending</Text>
+
+        {/* Quick actions grid — same as before */}
+        <View style={styles.grid}>
+          <TouchableOpacity style={styles.card} onPress={showProducts}>
+            <Text style={styles.cardIcon}>📦</Text>
+            <Text style={styles.cardTitle}>Products</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.card} onPress={showAnalytics}>
+            <Text style={styles.cardIcon}>📊</Text>
+            <Text style={styles.cardTitle}>Analytics</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.card} onPress={showPayments}>
+            <Text style={styles.cardIcon}>💰</Text>
+            <Text style={styles.cardTitle}>Payments</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => { setActiveTab('settings'); loadSettingsData(); }}
+          >
+            <Text style={styles.cardIcon}>⚙️</Text>
+            <Text style={styles.cardTitle}>Settings</Text>
+          </TouchableOpacity>
         </View>
-        <View style={[styles.statCard, styles.confirmedCard]}>
-          <Text style={styles.statNumber}>{stats.confirmed}</Text>
-          <Text style={styles.statLabel}>Confirmed</Text>
-        </View>
-        <View style={[styles.statCard, styles.deliveredCard]}>
-          <Text style={styles.statNumber}>{stats.delivered}</Text>
-          <Text style={styles.statLabel}>Delivered</Text>
-        </View>
-      </View>
 
-      <View style={styles.grid}>
-        <TouchableOpacity style={styles.card} onPress={showProducts}>
-          <Text style={styles.cardIcon}>📦</Text>
-          <Text style={styles.cardTitle}>Products</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.card} onPress={showAnalytics}>
-          <Text style={styles.cardIcon}>📊</Text>
-          <Text style={styles.cardTitle}>Analytics</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.card} onPress={showPayments}>
-          <Text style={styles.cardIcon}>💰</Text>
-          <Text style={styles.cardTitle}>Payments</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => { setActiveTab('settings'); loadSettingsData(); }}
-        >
-          <Text style={styles.cardIcon}>⚙️</Text>
-          <Text style={styles.cardTitle}>Settings</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🆕 Recent Orders</Text>
-        {loading ? (
-          <ActivityIndicator size="large" color="#01311F" style={styles.loader} />
-        ) : orders.length === 0 ? (
-          <Text style={styles.emptyText}>No orders yet.</Text>
-        ) : (
-          orders.slice(0, 5).map((order, index) => (
-            <View key={index} style={styles.orderItem}>
-              <TouchableOpacity
-                style={{ flex: 1 }}
-                onPress={() => handleOrderPress(order)}
-              >
-                <Text style={styles.orderId}>#{order._id.slice(-6).toUpperCase()}</Text>
-                <Text style={styles.orderStatus}>{order.status?.toUpperCase()}</Text>
-                <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
+        {/* Orders section — filtered */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>
+              {orderFilter === 'all' ? '🆕 All Orders' : `🆕 ${orderFilter.toUpperCase()} Orders`}
+            </Text>
+            {orderFilter !== 'all' && (
+              <TouchableOpacity onPress={() => setOrderFilter('all')}>
+                <Text style={styles.showAllText}>Show all</Text>
               </TouchableOpacity>
-              <View style={styles.orderActions}>
-                {order.status === 'pending' && (
-                  <TouchableOpacity
-                    style={styles.cancelButton}
-                    onPress={() => cancelOrder(order)}
-                  >
-                    <Text style={styles.cancelButtonText}>❌</Text>
-                  </TouchableOpacity>
-                )}
+            )}
+          </View>
+
+          {loading ? (
+            <ActivityIndicator size="large" color="#01311F" style={styles.loader} />
+          ) : visibleOrders.length === 0 ? (
+            <Text style={styles.emptyText}>
+              {orderFilter === 'all' ? 'No orders yet.' : `No ${orderFilter} orders.`}
+            </Text>
+          ) : (
+            visibleOrders.slice(0, 20).map((order, index) => (
+              <View key={index} style={styles.orderItem}>
                 <TouchableOpacity
-                  style={styles.chatButton}
-                  onPress={() => openChat(order)}
+                  style={{ flex: 1 }}
+                  onPress={() => handleOrderPress(order)}
                 >
-                  <Text style={styles.chatButtonText}>💬</Text>
+                  <Text style={styles.orderId}>#{order._id.slice(-6).toUpperCase()}</Text>
+                  <Text style={styles.orderItemsText}>{itemsSummary(order)}</Text>
+                  <View style={styles.orderStatusRow}>
+                    <View style={[styles.statusPill, { backgroundColor: statusBg(order.status) }]}>
+                      <Text style={[styles.statusPillText, { color: statusColor(order.status) }]}>
+                        {order.status?.toUpperCase()}
+                      </Text>
+                    </View>
+                    <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
+                  </View>
+                  <Text style={styles.actionHint}>{actionHint(order)}</Text>
                 </TouchableOpacity>
+                <View style={styles.orderActions}>
+                  {order.status === 'pending' && (
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={() => cancelOrder(order)}
+                    >
+                      <Text style={styles.cancelButtonText}>❌</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={styles.chatButton}
+                    onPress={() => openChat(order)}
+                  >
+                    <Text style={styles.chatButtonText}>💬</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          ))
-        )}
-      </View>
-    </>
-  );
+            ))
+          )}
+        </View>
+      </>
+    );
+  };
+
+  // Helpers for status colors
+  const statusColor = (status) => {
+    if (status === 'delivered') return '#1B5E20';
+    if (status === 'pending') return '#E65100';
+    if (status === 'cancelled') return '#C62828';
+    if (status === 'confirmed') return '#0D47A1';
+    return '#6C757D';
+  };
+
+  const statusBg = (status) => {
+    if (status === 'delivered') return '#E8F5E9';
+    if (status === 'pending') return '#FFF3E0';
+    if (status === 'cancelled') return '#FFEBEE';
+    if (status === 'confirmed') return '#E3F2FD';
+    return '#F1F3F5';
+  };
 
   // ============================================================
   // RENDER SETTINGS
@@ -1283,4 +1384,38 @@ const styles = StyleSheet.create({
   chatInput: { flex: 1, backgroundColor: COLORS.background, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, maxHeight: 100, borderWidth: 1, borderColor: COLORS.lightGray },
   chatSendButton: { marginLeft: 8, backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20 },
   chatSendText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
+    // Enhanced order row
+  orderItemsText: { fontSize: 13, color: COLORS.gray, marginTop: 4 },
+  orderStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  statusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  actionHint: {
+    fontSize: 12,
+    color: COLORS.secondary,
+    fontWeight: '600',
+    marginTop: 6,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  showAllText: {
+    fontSize: 13,
+    color: COLORS.secondary,
+    fontWeight: '600',
+  },
+  statCardActive: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
 });
