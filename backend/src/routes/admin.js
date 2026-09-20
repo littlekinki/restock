@@ -84,7 +84,7 @@ router.get('/earnings', auth, adminOnly, async (req, res) => {
     // ============================================================
     const breakdown = orders.slice(0, 100).map(o => ({
       _id: o._id,
-      orderId: `#${o._id.slice(-6).toUpperCase()}`,
+      orderId: `#${o._id.toString().slice(-6).toUpperCase()}`,
       status: o.status,
       createdAt: o.createdAt,
       shopName: o.shopId?.businessName || 'Unknown',
