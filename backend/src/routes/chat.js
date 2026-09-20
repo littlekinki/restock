@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 const Message = require('../models/Message');
 const Order = require('../models/Order');
 const mongoose = require('mongoose');
+const notificationService = require('../services/notificationService');
 
 // ============================================================
 // GET CHAT FOR AN ORDER
@@ -68,6 +69,18 @@ router.post('/send', auth, async (req, res) => {
 
         await newMessage.save();
 
+        // ✅ IN-APP NOTIFICATION to receiver
+        try {
+            await notificationService.notifyChatMessage(
+                { _id: receiverId, role: receiverRole },
+                order,
+                senderName,
+                (message || '').toString().slice(0, 80)
+            );
+        } catch (notifError) {
+            console.error('⚠️ Chat notification failed:', notifError.message);
+        }
+
         res.status(201).json({
             success: true,
             message: newMessage
@@ -77,7 +90,6 @@ router.post('/send', auth, async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
-
 // ============================================================
 // GET UNREAD COUNT
 // ============================================================

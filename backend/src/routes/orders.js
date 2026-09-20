@@ -9,6 +9,7 @@ const mongoose = require('mongoose');
 const smsService = require('../services/smsService');
 const callService = require('../services/callService');
 const pushService = require('../services/pushService');
+const notificationService = require('../services/notificationService');
 const { computeDeliveryFee } = require('../utils/deliveryFee');
 const adminOnly = require('../middleware/adminOnly');
 
@@ -93,6 +94,15 @@ router.post('/', auth, async (req, res) => {
             console.log(`📱 SMS notification sent for order ${order._id}`);
         } catch (smsError) {
             console.error('⚠️ SMS notification failed:', smsError.message);
+        }
+
+        // ✅ IN-APP NOTIFICATIONS
+        try {
+            const shop = await Shop.findById(shopId);
+            if (shop) await notificationService.notifyShopOrderPlaced(shop, order);
+            if (distributor) await notificationService.notifyDistributorNewOrder(distributor, order);
+        } catch (notifError) {
+            console.error('⚠️ Notification create failed:', notifError.message);
         }
 
         // ✅ SCHEDULE AUTO-CALL TO DISTRIBUTOR (AFTER 5 MINUTES)
@@ -255,6 +265,21 @@ router.patch('/:id/status', auth, async (req, res) => {
             console.error('⚠️ SMS notification failed:', smsError.message);
         }
 
+        // ✅ IN-APP NOTIFICATION for status change
+        try {
+            const shopForNotif = await Shop.findById(order.shopId);
+            if (shopForNotif) {
+                if (status === 'confirmed') {
+                    await notificationService.notifyShopOrderConfirmed(shopForNotif, order);
+                } else if (status === 'delivered') {
+                    await notificationService.notifyShopDelivered(shopForNotif, order);
+                }
+                // For picked_up / out_for_delivery — already covered by push
+            }
+        } catch (notifError) {
+            console.error('⚠️ Status notification failed:', notifError.message);
+        }
+
         // ✅ SEND PUSH NOTIFICATION TO SHOP OWNER (respect prefs)
         try {
             const shop = await Shop.findById(order.shopId);
@@ -368,6 +393,17 @@ router.patch('/:id/assign-rider', auth, async (req, res) => {
             }
         } else if (rider.pushToken) {
             console.log(`🔕 Push to rider ${rider.fullName} skipped — rider disabled push`);
+        }
+
+        // ✅ IN-APP NOTIFICATIONS
+        try {
+            const shopForNotif = await Shop.findById(order.shopId);
+            if (shopForNotif) {
+                await notificationService.notifyShopRiderAssigned(shopForNotif, order, rider.fullName);
+            }
+            await notificationService.notifyRiderAssigned(rider, order);
+        } catch (notifError) {
+            console.error('⚠️ Assign-rider notification failed:', notifError.message);
         }
 
         // Generate 4-digit PIN
@@ -578,6 +614,23 @@ router.patch('/:id/cancel', auth, async (req, res) => {
         });
 
         await order.save();
+
+        // ✅ IN-APP NOTIFICATIONS to the other party
+        try {
+            const recipient = role === 'shop' ? order.distributorId : order.shopId;
+            const recipientRole = role === 'shop' ? 'distributor' : 'shop';
+            if (recipient) {
+                await notificationService.notifyOrderCancelled(
+                    { _id: recipient._id, role: recipientRole },
+                    order,
+                    role,
+                    reason
+                );
+            }
+        } catch (notifError) {
+            console.error('⚠️ Cancel notification failed:', notifError.message);
+        }
+
         // Send SMS notification to the other party (respect prefs)
         try {
             const recipient = role === 'shop' ? order.distributorId : order.shopId;

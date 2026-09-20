@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 const ProductRequest = require('../models/ProductRequest');
 const Shop = require('../models/Shop');
 const pushService = require('../services/pushService');
+const notificationService = require('../services/notificationService');
 
 // ============================================================
 // CREATE PRODUCT REQUEST (from Shop)
@@ -30,6 +31,23 @@ router.post('/', auth, async (req, res) => {
 
         console.log(`📝 Product request created: ${productName} by shop ${shopId}`);
 
+        // ✅ IN-APP NOTIFICATION to admin
+        try {
+            const adminPhone = process.env.ADMIN_PHONE;
+            if (adminPhone) {
+                const Distributor = require('../models/Distributor');
+                let adminUser = await Shop.findOne({ phone: adminPhone });
+                if (!adminUser) {
+                    adminUser = await Distributor.findOne({ phone: adminPhone });
+                }
+                if (adminUser) {
+                    await notificationService.notifyAdminProductRequest(adminUser._id, request);
+                }
+            }
+        } catch (notifError) {
+            console.error('⚠️ Product-request notification failed:', notifError.message);
+        }
+
         res.status(201).json({
             success: true,
             request,
@@ -41,7 +59,6 @@ router.post('/', auth, async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
-
 // ============================================================
 // GET ALL PRODUCT REQUESTS (Admin)
 // ============================================================
