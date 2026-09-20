@@ -649,6 +649,13 @@ function showSection(section) {
             orderList.innerHTML = '<div class="loading">Loading payments...</div>';
             loadDistributorPayments();
             break;
+        case 'earnings':
+            statsContainer.style.display = 'none';
+            if (ordersSection) ordersSection.style.display = 'none';
+            const earningsSec = document.getElementById('earningsSection');
+            if (earningsSec) earningsSec.style.display = 'block';
+            loadDistributorEarnings();
+            break;
         case 'reports':
             if (ordersSection) ordersSection.style.display = 'block';
             orderList.innerHTML = '<div class="loading">Loading reports...</div>';
@@ -678,6 +685,9 @@ function showSection(section) {
         // Hide settings section
         const settingsSec1 = document.getElementById('settingsSection');
         if (settingsSec1) settingsSec1.style.display = 'none';
+
+        const earningsSec1 = document.getElementById('earningsSection');
+        if (earningsSec1) earningsSec1.style.display = 'none';
         
         orderList.innerHTML = '<div class="loading">Loading orders...</div>';
         fetchOrders();
@@ -1374,4 +1384,85 @@ async function cancelOrder() {
         console.error('Cancel error:', error);
         showToast('❌ Could not cancel order');
     }
+}
+
+// ============================================================
+// LOAD DISTRIBUTOR EARNINGS
+// ============================================================
+async function loadDistributorEarnings() {
+    const container = document.getElementById('earningsList');
+    if (!container) return;
+
+    container.innerHTML = '<div class="loading">Loading earnings...</div>';
+
+    try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+        const res = await fetch(`${API_URL}/distributors/${user.id}/earnings`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+            container.innerHTML = `<div class="empty-state"><p>❌</p><p>${data.error || 'Failed to load'}</p></div>`;
+            return;
+        }
+
+        renderDistributorEarnings(data.summary, data.breakdown);
+    } catch (e) {
+        console.error('Distributor earnings error:', e);
+        container.innerHTML = '<div class="empty-state"><p>❌</p><p>Network error</p></div>';
+    }
+}
+
+function renderDistributorEarnings(s, rows) {
+    // Summary cards
+    document.getElementById('earnTotalRevenue').textContent = '₦' + (s.totalRevenue || 0).toLocaleString();
+    document.getElementById('earnDelivered').textContent = '₦' + (s.deliveredRevenue || 0).toLocaleString();
+    document.getElementById('earnDeliveredCount').textContent = `${s.deliveredCount || 0} order${s.deliveredCount === 1 ? '' : 's'} delivered`;
+    document.getElementById('earnPending').textContent = '₦' + (s.pendingRevenue || 0).toLocaleString();
+    document.getElementById('earnPendingCount').textContent = `${(s.pendingCount || 0) + (s.confirmedCount || 0) + (s.inTransitCount || 0)} in progress`;
+    document.getElementById('earnCartons').textContent = s.totalCartons || 0;
+    document.getElementById('earnDeliveredCartons').textContent = `${s.deliveredCartons || 0} delivered`;
+    document.getElementById('earnMonth').textContent = '₦' + (s.monthRevenue || 0).toLocaleString();
+    document.getElementById('earnAvg').textContent = '₦' + (s.avgOrderValue || 0).toLocaleString();
+
+    // Table
+    const container = document.getElementById('earningsList');
+    if (!rows || rows.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>📭</p><p>No orders yet.</p></div>';
+        return;
+    }
+
+    const html = rows.map(o => `
+        <tr>
+            <td><strong>${o.orderId}</strong></td>
+            <td>${o.shopName}</td>
+            <td><span class="order-status-badge ${o.status}">${(o.status || '').toUpperCase()}</span></td>
+            <td>${o.cartons}</td>
+            <td><strong>₦${(o.total || 0).toLocaleString()}</strong></td>
+            <td>${o.paidToDistributor
+                ? `<span class="paid-badge">✅ PAID</span>`
+                : `<span class="unpaid-badge">⏳ PENDING</span>`
+            }</td>
+        </tr>
+    `).join('');
+
+    container.innerHTML = `
+        <table class="earnings-table">
+            <thead>
+                <tr>
+                    <th>Order</th>
+                    <th>Shop</th>
+                    <th>Status</th>
+                    <th>Cartons</th>
+                    <th>Total</th>
+                    <th>Payment</th>
+                </tr>
+            </thead>
+            <tbody>${html}</tbody>
+        </table>
+    `;
 }

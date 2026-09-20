@@ -31,6 +31,9 @@
                 <a href="#" class="nav-item" onclick="showSection('payments')">
                     <span class="nav-icon">💰</span> Payments
                 </a>
+                <a href="#" class="nav-item" onclick="showSection('earnings')">
+                    <span class="nav-icon">💵</span> My Earnings
+                </a>
                 <a href="#" class="nav-item" onclick="showSection('reports')">
                     <span class="nav-icon">📈</span> Reports
                 </a>
@@ -154,6 +157,55 @@
                         <button type="submit" class="btn btn-primary">✅ Add Product</button>
                     </div>
                 </form>
+            </section>
+
+            <!-- ✅ EARNINGS SECTION -->
+            <section class="users-section" id="earningsSection" style="display: none;">
+                <div class="section-header">
+                    <h2>💵 My Earnings</h2>
+                </div>
+
+                <!-- Summary cards -->
+                <div class="earnings-grid">
+                    <div class="earning-card earning-green">
+                        <p class="earning-label">💰 Total Revenue</p>
+                        <p class="earning-value" id="earnTotalRevenue">₦0</p>
+                        <p class="earning-hint">All orders</p>
+                    </div>
+                    <div class="earning-card earning-blue">
+                        <p class="earning-label">✅ Delivered Revenue</p>
+                        <p class="earning-value" id="earnDelivered">₦0</p>
+                        <p class="earning-hint" id="earnDeliveredCount">0 orders delivered</p>
+                    </div>
+                    <div class="earning-card earning-orange">
+                        <p class="earning-label">⏳ Pending Revenue</p>
+                        <p class="earning-value" id="earnPending">₦0</p>
+                        <p class="earning-hint" id="earnPendingCount">0 orders in progress</p>
+                    </div>
+                    <div class="earning-card earning-purple">
+                        <p class="earning-label">📦 Total Cartons</p>
+                        <p class="earning-value" id="earnCartons">0</p>
+                        <p class="earning-hint" id="earnDeliveredCartons">0 delivered</p>
+                    </div>
+                    <div class="earning-card earning-teal">
+                        <p class="earning-label">📅 This Month</p>
+                        <p class="earning-value" id="earnMonth">₦0</p>
+                        <p class="earning-hint">Since 1st of month</p>
+                    </div>
+                    <div class="earning-card earning-gray">
+                        <p class="earning-label">📊 Avg Order</p>
+                        <p class="earning-value" id="earnAvg">₦0</p>
+                        <p class="earning-hint">Per order</p>
+                    </div>
+                </div>
+
+                <!-- Orders breakdown -->
+                <div class="earnings-table-wrap">
+                    <h3 style="margin-bottom: 16px;">📋 Order Breakdown</h3>
+                    <div id="earningsList">
+                        <div class="loading">Loading earnings...</div>
+                    </div>
+                </div>
             </section>
 
             <!-- ✅ SETTINGS SECTION -->

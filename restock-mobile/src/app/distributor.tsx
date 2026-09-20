@@ -45,6 +45,10 @@ export default function DistributorScreen() {
   const [notifPrefs, setNotifPrefs] = useState({ sms: true, push: true });
   const [savingNotifPrefs, setSavingNotifPrefs] = useState(false);
 
+  // Earnings state
+  const [earnings, setEarnings] = useState(null);
+  const [showEarningsModal, setShowEarningsModal] = useState(false);
+
   // Product form state
   const [showProductForm, setShowProductForm] = useState(false);
   const [newProduct, setNewProduct] = useState({
@@ -68,6 +72,7 @@ export default function DistributorScreen() {
     loadUser();
     loadOrders();
     loadProducts();
+    loadEarnings();
   }, []);
 
   const loadUser = async () => {
@@ -128,6 +133,26 @@ export default function DistributorScreen() {
   };
 
   // ============================================================
+  // LOAD EARNINGS
+  // ============================================================
+  const loadEarnings = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+      const response = await fetch(`${API_URL}/distributors/${currentUser.id}/earnings`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setEarnings(data);
+      }
+    } catch (error) {
+      console.error('Load earnings error:', error);
+    }
+  };
+
+  // ============================================================
   // LOAD SETTINGS DATA
   // ============================================================
   const loadSettingsData = async () => {
@@ -178,6 +203,7 @@ export default function DistributorScreen() {
     setRefreshing(true);
     loadOrders();
     loadProducts();
+    loadEarnings();
   };
 
   // ============================================================
@@ -924,6 +950,41 @@ export default function DistributorScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* 💰 Earnings card */}
+        {earnings && (
+          <TouchableOpacity
+            style={styles.earningsCard}
+            onPress={() => setShowEarningsModal(true)}
+          >
+            <View style={styles.earningsHeader}>
+              <Text style={styles.earningsTitle}>💰 My Earnings</Text>
+              <Text style={styles.earningsArrow}>→</Text>
+            </View>
+
+            <Text style={styles.earningsBig}>
+              ₦{(earnings.summary.monthRevenue || 0).toLocaleString()}
+            </Text>
+            <Text style={styles.earningsLabel}>This month</Text>
+
+            <View style={styles.earningsRow}>
+              <View style={styles.earningsStat}>
+                <Text style={styles.earningsStatLabel}>✅ Delivered</Text>
+                <Text style={styles.earningsStatValue}>
+                  ₦{(earnings.summary.deliveredRevenue || 0).toLocaleString()}
+                </Text>
+              </View>
+              <View style={styles.earningsStat}>
+                <Text style={styles.earningsStatLabel}>📦 Cartons</Text>
+                <Text style={styles.earningsStatValue}>
+                  {earnings.summary.totalCartons || 0}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.earningsTapHint}>Tap for full breakdown →</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Quick actions grid — same as before */}
         <View style={styles.grid}>
           <TouchableOpacity style={styles.card} onPress={showProducts}>
@@ -1277,6 +1338,108 @@ export default function DistributorScreen() {
           </SafeAreaView>
         </Modal>
       )}
+
+      {/* Earnings Modal */}
+      {showEarningsModal && earnings && (
+        <Modal visible={showEarningsModal} animationType="slide" transparent={false}>
+          <SafeAreaView style={styles.chatContainer}>
+            <View style={styles.chatHeader}>
+              <TouchableOpacity onPress={() => setShowEarningsModal(false)}>
+                <Text style={styles.chatBack}>← Back</Text>
+              </TouchableOpacity>
+              <View style={styles.chatHeaderInfo}>
+                <Text style={styles.chatHeaderName}>💰 My Earnings</Text>
+                <Text style={styles.chatHeaderRole}>Full breakdown</Text>
+              </View>
+              <View style={{ width: 60 }} />
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 16 }}>
+              {/* Revenue cards */}
+              <View style={styles.earnModalRow}>
+                <View style={[styles.earnModalCard, { borderLeftColor: '#1B5E20' }]}>
+                  <Text style={styles.earnModalLabel}>💰 Total Revenue</Text>
+                  <Text style={styles.earnModalValue}>
+                    ₦{(earnings.summary.totalRevenue || 0).toLocaleString()}
+                  </Text>
+                  <Text style={styles.earnModalHint}>{earnings.summary.totalOrders} orders</Text>
+                </View>
+                <View style={[styles.earnModalCard, { borderLeftColor: '#0D47A1' }]}>
+                  <Text style={styles.earnModalLabel}>✅ Delivered</Text>
+                  <Text style={styles.earnModalValue}>
+                    ₦{(earnings.summary.deliveredRevenue || 0).toLocaleString()}
+                  </Text>
+                  <Text style={styles.earnModalHint}>{earnings.summary.deliveredCount} delivered</Text>
+                </View>
+              </View>
+
+              <View style={styles.earnModalRow}>
+                <View style={[styles.earnModalCard, { borderLeftColor: '#E65100' }]}>
+                  <Text style={styles.earnModalLabel}>⏳ Pending</Text>
+                  <Text style={styles.earnModalValue}>
+                    ₦{(earnings.summary.pendingRevenue || 0).toLocaleString()}
+                  </Text>
+                  <Text style={styles.earnModalHint}>
+                    {earnings.summary.pendingCount + earnings.summary.confirmedCount + earnings.summary.inTransitCount} in progress
+                  </Text>
+                </View>
+                <View style={[styles.earnModalCard, { borderLeftColor: '#6A1B9A' }]}>
+                  <Text style={styles.earnModalLabel}>📦 Cartons</Text>
+                  <Text style={styles.earnModalValue}>{earnings.summary.totalCartons || 0}</Text>
+                  <Text style={styles.earnModalHint}>{earnings.summary.deliveredCartons} delivered</Text>
+                </View>
+              </View>
+
+              <View style={styles.earnModalRow}>
+                <View style={[styles.earnModalCard, { borderLeftColor: '#00838F' }]}>
+                  <Text style={styles.earnModalLabel}>📅 This Month</Text>
+                  <Text style={styles.earnModalValue}>
+                    ₦{(earnings.summary.monthRevenue || 0).toLocaleString()}
+                  </Text>
+                  <Text style={styles.earnModalHint}>Since 1st</Text>
+                </View>
+                <View style={[styles.earnModalCard, { borderLeftColor: '#6C757D' }]}>
+                  <Text style={styles.earnModalLabel}>📊 Avg Order</Text>
+                  <Text style={styles.earnModalValue}>
+                    ₦{(earnings.summary.avgOrderValue || 0).toLocaleString()}
+                  </Text>
+                  <Text style={styles.earnModalHint}>per order</Text>
+                </View>
+              </View>
+
+              {/* Orders list */}
+              <Text style={[styles.sectionTitle, { marginTop: 24 }]}>📋 Order Breakdown</Text>
+
+              {earnings.breakdown.length === 0 ? (
+                <Text style={styles.emptyText}>No orders yet.</Text>
+              ) : (
+                earnings.breakdown.map((o, idx) => (
+                  <View key={idx} style={styles.earnOrderRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.earnOrderId}>{o.orderId}</Text>
+                      <Text style={styles.earnOrderShop}>{o.shopName}</Text>
+                      <Text style={styles.earnOrderMeta}>
+                        {o.cartons} carton{o.cartons === 1 ? '' : 's'} • {o.status?.toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={styles.earnOrderTotal}>
+                        ₦{(o.total || 0).toLocaleString()}
+                      </Text>
+                      <Text style={[
+                        styles.earnPaidBadge,
+                        o.paidToDistributor ? styles.earnPaidBadgeYes : styles.earnPaidBadgeNo,
+                      ]}>
+                        {o.paidToDistributor ? '✅ PAID' : '⏳ PENDING'}
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -1417,5 +1580,155 @@ const styles = StyleSheet.create({
   statCardActive: {
     borderWidth: 2,
     borderColor: COLORS.primary,
+  },
+    // Earnings card (dashboard)
+  earningsCard: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  earningsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  earningsTitle: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  earningsArrow: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  earningsBig: {
+    color: '#FFFFFF',
+    fontSize: 32,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  earningsLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    marginBottom: 16,
+  },
+  earningsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  earningsStat: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 10,
+    padding: 10,
+  },
+  earningsStatLabel: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11,
+    marginBottom: 4,
+  },
+  earningsStatValue: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  earningsTapHint: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 11,
+    textAlign: 'right',
+  },
+  // Earnings modal
+  earnModalRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  earnModalCard: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    padding: 14,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  earnModalLabel: {
+    fontSize: 11,
+    color: COLORS.gray,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  earnModalValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  earnModalHint: {
+    fontSize: 11,
+    color: COLORS.gray,
+    marginTop: 4,
+  },
+  earnOrderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 8,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  earnOrderId: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  earnOrderShop: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginTop: 2,
+  },
+  earnOrderMeta: {
+    fontSize: 11,
+    color: COLORS.gray,
+    marginTop: 4,
+  },
+  earnOrderTotal: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginBottom: 4,
+  },
+  earnPaidBadge: {
+    fontSize: 10,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  earnPaidBadgeYes: {
+    backgroundColor: '#E8F5E9',
+    color: '#1B5E20',
+  },
+  earnPaidBadgeNo: {
+    backgroundColor: '#FFF3E0',
+    color: '#E65100',
   },
 });
