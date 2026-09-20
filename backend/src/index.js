@@ -25,6 +25,7 @@ const smsRoutes = require('./routes/sms');
 const productRequestRoutes = require('./routes/productRequests');
 const chatRoutes = require('./routes/chat');
 const adminRoutes = require('./routes/admin');
+const notificationRoutes = require('./routes/notifications');
 
 app.use('/api/orders', aiOrderRoutes);
 app.use('/api/orders', orderRoutes);

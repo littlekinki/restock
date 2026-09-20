@@ -87,9 +87,12 @@ export default function DistributorScreen() {
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('token');
-      const response = await fetch(`${API_URL}/orders`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+      const response = await fetch(
+        `${API_URL}/orders?distributorId=${currentUser.id}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
       const data = await response.json();
       if (data.success) {
         setOrders(data.orders || []);
