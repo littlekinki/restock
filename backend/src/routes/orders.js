@@ -10,6 +10,7 @@ const smsService = require('../services/smsService');
 const callService = require('../services/callService');
 const pushService = require('../services/pushService');
 const { computeDeliveryFee } = require('../utils/deliveryFee');
+const adminOnly = require('../middleware/adminOnly');
 
 // ============================================================
 // ✅ NOTIFICATION PREFERENCE HELPERS
@@ -617,6 +618,47 @@ router.patch('/:id/cancel', auth, async (req, res) => {
 
     } catch (error) {
         console.error('Cancel order error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// MARK PAID TO DISTRIBUTOR - PATCH /api/orders/:id/mark-paid-to-distributor
+// ============================================================
+
+router.patch('/:id/mark-paid-to-distributor', auth, adminOnly, async (req, res) => {
+    try {
+        const { amount, note } = req.body;
+        const order = await Order.findById(req.params.id);
+
+        if (!order) {
+            return res.status(404).json({ success: false, error: 'Order not found' });
+        }
+
+        if (order.paidToDistributorAt) {
+            return res.status(400).json({
+                success: false,
+                error: 'Order already marked as paid',
+            });
+        }
+
+        order.paidToDistributorAt = new Date();
+        order.paidToDistributorAmount = Number(amount) || order.total || 0;
+        order.paidToDistributorNote = note || '';
+        order.trackingUpdates.push({
+            status: order.status,
+            note: `💰 Paid ₦${(Number(amount) || 0).toLocaleString()} to distributor`,
+        });
+
+        await order.save();
+
+        res.json({
+            success: true,
+            order,
+            message: 'Marked as paid to distributor',
+        });
+    } catch (error) {
+        console.error('Mark-paid error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
