@@ -37,6 +37,7 @@ app.use('/api/sms', smsRoutes);
 app.use('/api/product-requests', productRequestRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/', (req, res) => {
