@@ -22,6 +22,9 @@
                 <a href="#" class="nav-item" onclick="showSection('orders')">
                     <span class="nav-icon">📦</span> Orders
                 </a>
+                <a href="#" class="nav-item" onclick="showSection('earnings')">
+                    <span class="nav-icon">💰</span> Earnings
+                </a>
                 <a href="#" class="nav-item" onclick="showSection('shops')">
                     <span class="nav-icon">🏪</span> Shops
                 </a>
@@ -202,6 +205,54 @@
                 </div>
                 <div class="users-list" id="ordersList">
                     <div class="loading">Loading orders...</div>
+                </div>
+            </section>
+
+            <!-- ✅ EARNINGS SECTION -->
+            <section class="users-section" id="earningsSection" style="display: none;">
+                <div class="section-header">
+                    <h2>💰 Platform Earnings & Payouts</h2>
+                    <div class="earnings-filter">
+                        <label>📅 Range:</label>
+                        <select id="earningsRange" onchange="loadEarnings()">
+                            <option value="all" selected>All Time</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Cash flow cards -->
+                <div class="earnings-grid">
+                    <div class="earning-card earning-green">
+                        <p class="earning-label">💵 Cash In (Delivered)</p>
+                        <p class="earning-value" id="earningsCashIn">₦0</p>
+                        <p class="earning-hint">What shops owe/paid you</p>
+                    </div>
+                    <div class="earning-card earning-orange">
+                        <p class="earning-label">💸 Cash Out (Paid)</p>
+                        <p class="earning-value" id="earningsCashOut">₦0</p>
+                        <p class="earning-hint">What you've paid distributors</p>
+                    </div>
+                    <div class="earning-card earning-red">
+                        <p class="earning-label">📉 Owed to Distributors</p>
+                        <p class="earning-value" id="earningsOwed">₦0</p>
+                        <p class="earning-hint">Unpaid orders total</p>
+                    </div>
+                    <div class="earning-card earning-blue">
+                        <p class="earning-label">📊 Net Position</p>
+                        <p class="earning-value" id="earningsNet">₦0</p>
+                        <p class="earning-hint">Cash in − Cash out</p>
+                    </div>
+                </div>
+
+                <!-- Order payout table -->
+                <div class="earnings-table-wrap">
+                    <h3 style="margin-bottom: 16px;">📋 Order Breakdown</h3>
+                    <div id="earningsList">
+                        <div class="loading">Loading earnings...</div>
+                    </div>
                 </div>
             </section>
 

@@ -285,7 +285,7 @@ function showToast(message) {
 // ============================================================
 function showSection(section) {
     // Hide all sections
-    const sections = ['settingsSection', 'shopsSection', 'distributorsSection', 'ridersSection', 'ordersSection', 'requestsSection'];
+    const sections = ['settingsSection', 'shopsSection', 'distributorsSection', 'ridersSection', 'ordersSection', 'requestsSection', 'earningsSection'];
     sections.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
@@ -347,6 +347,12 @@ function showSection(section) {
             const reqSec = document.getElementById('requestsSection');
             if (reqSec) reqSec.style.display = 'block';
             loadProductRequests();
+            break;
+
+        case 'earnings':
+            const earningsSec = document.getElementById('earningsSection');
+            if (earningsSec) earningsSec.style.display = 'block';
+            loadEarnings();
             break;
 
         case 'settings':
@@ -740,6 +746,123 @@ async function updateRequestStatus(requestId, status) {
     } catch (error) {
         console.error('Update status error:', error);
         showToast('❌ Failed to update status');
+    }
+}
+
+// ============================================================
+// EARNINGS
+// ============================================================
+async function loadEarnings() {
+    const container = document.getElementById('earningsList');
+    const range = document.getElementById('earningsRange')?.value || 'all';
+    if (!container) return;
+
+    container.innerHTML = '<div class="loading">Loading earnings...</div>';
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/admin/earnings?range=${range}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 403) {
+            container.innerHTML = '<div class="empty-state"><p>🔒</p><p>Admin access required.</p></div>';
+            return;
+        }
+        if (res.status === 401) {
+            container.innerHTML = '<div class="empty-state"><p>🔒</p><p>Please log in again.</p></div>';
+            return;
+        }
+
+        const data = await res.json();
+        if (!data.success) {
+            container.innerHTML = `<div class="empty-state"><p>❌</p><p>${data.error || 'Failed to load'}</p></div>`;
+            return;
+        }
+
+        renderEarningsSummary(data.summary);
+        renderEarningsTable(data.breakdown);
+    } catch (e) {
+        console.error('Earnings error:', e);
+        container.innerHTML = '<div class="empty-state"><p>❌</p><p>Network error</p></div>';
+    }
+}
+
+function renderEarningsSummary(s) {
+    document.getElementById('earningsCashIn').textContent = '₦' + (s.totalIncomingDelivered || 0).toLocaleString();
+    document.getElementById('earningsCashOut').textContent = '₦' + (s.totalPaidToDistributors || 0).toLocaleString();
+    document.getElementById('earningsOwed').textContent = '₦' + (s.unpaidToDistributors || 0).toLocaleString();
+    document.getElementById('earningsNet').textContent = '₦' + (s.netPosition || 0).toLocaleString();
+}
+
+function renderEarningsTable(rows) {
+    const container = document.getElementById('earningsList');
+    if (!rows || rows.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>📭</p><p>No orders found.</p></div>';
+        return;
+    }
+
+    const html = rows.map(o => `
+        <tr>
+            <td><strong>${o.orderId}</strong></td>
+            <td>${o.shopName}</td>
+            <td>${o.distributorName}</td>
+            <td><span class="order-status-badge ${o.status}">${(o.status || '').toUpperCase()}</span></td>
+            <td>₦${(o.total || 0).toLocaleString()}</td>
+            <td>${o.paidToDistributor
+                ? `<span class="btn-paid">✅ Paid</span>`
+                : `<button class="btn-mark-paid" onclick="markPaid('${o._id}')">💸 Mark as Paid</button>`
+            }</td>
+        </tr>
+    `).join('');
+
+    container.innerHTML = `
+        <table class="earnings-table">
+            <thead>
+                <tr>
+                    <th>Order</th>
+                    <th>Shop</th>
+                    <th>Distributor</th>
+                    <th>Status</th>
+                    <th>Total</th>
+                    <th>Payment</th>
+                </tr>
+            </thead>
+            <tbody>${html}</tbody>
+        </table>
+    `;
+}
+
+async function markPaid(orderId) {
+    const amount = prompt('Amount paid to distributor (₦):');
+    if (amount === null) return;
+
+    const note = prompt('Note (optional):', '') || '';
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/orders/${orderId}/mark-paid-to-distributor`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                amount: parseFloat(amount) || 0,
+                note
+            })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            showToast('✅ Marked as paid');
+            loadEarnings();
+        } else {
+            showToast('❌ ' + (data.error || 'Failed'));
+        }
+    } catch (e) {
+        console.error('Mark-paid error:', e);
+        showToast('❌ Network error');
     }
 }
 

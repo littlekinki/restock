@@ -86,4 +86,126 @@ router.patch('/:id/notification-prefs', auth, async (req, res) => {
     }
 });
 
+// ============================================================
+// GET DISTRIBUTOR EARNINGS - GET /api/distributors/:id/earnings
+// ============================================================
+const Order = require('../models/Order');
+const { cartonEquivalent } = require('../utils/deliveryFee');
+
+router.get('/:id/earnings', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Auth: only the distributor themselves (or admin) can see their earnings
+        const isOwnAccount = req.user.id === id;
+        const isAdminPhone =
+            process.env.ADMIN_PHONE && req.user.phone === process.env.ADMIN_PHONE;
+
+        if (!isOwnAccount && !isAdminPhone) {
+            return res.status(403).json({
+                success: false,
+                error: 'You can only view your own earnings',
+            });
+        }
+
+        const orders = await Order.find({ distributorId: id })
+            .populate('shopId', 'businessName phone')
+            .sort({ createdAt: -1 });
+
+        // ============================================================
+        // Aggregates
+        // ============================================================
+        let totalRevenue = 0;
+        let deliveredRevenue = 0;
+        let pendingRevenue = 0;
+        let cancelledRevenue = 0;
+
+        let totalOrders = orders.length;
+        let deliveredCount = 0;
+        let pendingCount = 0;
+        let confirmedCount = 0;
+        let inTransitCount = 0;
+        let cancelledCount = 0;
+
+        let totalCartons = 0;
+        let deliveredCartons = 0;
+
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        let monthRevenue = 0;
+
+        orders.forEach(o => {
+            const total = o.total || 0;
+            totalRevenue += total;
+
+            if (o.status === 'delivered') {
+                deliveredCount++;
+                deliveredRevenue += total;
+            } else if (o.status === 'pending') {
+                pendingCount++;
+                pendingRevenue += total;
+            } else if (o.status === 'confirmed') {
+                confirmedCount++;
+                pendingRevenue += total;
+            } else if (o.status === 'picked_up' || o.status === 'out_for_delivery') {
+                inTransitCount++;
+                pendingRevenue += total;
+            } else if (o.status === 'cancelled') {
+                cancelledCount++;
+                cancelledRevenue += total;
+            }
+
+            // Carton count (using same weights as delivery fee)
+            const cartons = cartonEquivalent(o.items || []);
+            totalCartons += cartons;
+            if (o.status === 'delivered') deliveredCartons += cartons;
+
+            // This month
+            if (new Date(o.createdAt) >= monthStart) {
+                monthRevenue += total;
+            }
+        });
+
+        // ============================================================
+        // Per-order breakdown
+        // ============================================================
+        const breakdown = orders.slice(0, 100).map(o => ({
+            _id: o._id,
+            orderId: `#${o._id.toString().slice(-6).toUpperCase()}`,
+            status: o.status,
+            createdAt: o.createdAt,
+            shopName: o.shopId?.businessName || 'Unknown',
+            total: o.total || 0,
+            cartons: cartonEquivalent(o.items || []),
+            paidToDistributor: !!o.paidToDistributorAt,
+            paidAt: o.paidToDistributorAt,
+            paidAmount: o.paidToDistributorAmount || 0,
+        }));
+
+        res.json({
+            success: true,
+            summary: {
+                totalOrders,
+                deliveredCount,
+                pendingCount,
+                confirmedCount,
+                inTransitCount,
+                cancelledCount,
+                totalRevenue,
+                deliveredRevenue,
+                pendingRevenue,
+                cancelledRevenue,
+                monthRevenue,
+                totalCartons,
+                deliveredCartons,
+                avgOrderValue: totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0,
+            },
+            breakdown,
+        });
+    } catch (error) {
+        console.error('Distributor earnings error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 module.exports = router;
