@@ -6,6 +6,7 @@ const Shop = require('../models/Shop');
 const Distributor = require('../models/Distributor');
 const Rider = require('../models/Rider');
 const auth = require('../middleware/auth'); 
+const { geocodeAddress } = require('../services/geocodeService');
 
 // ============================================================
 // REGISTER
@@ -30,24 +31,76 @@ router.post('/register', async (req, res) => {
 
         // Create user based on role
         switch (role) {
-            case 'shop':
+            case 'shop': {
+                const shopAddress = {
+                    street: address?.street || '',
+                    city: address?.city || '',
+                    state: address?.state || '',
+                    landmark: address?.landmark || '',
+                    lat: 0,
+                    lng: 0,
+                };
+
+                // ✅ Auto-geocode (non-blocking — failure is fine)
+                if (shopAddress.street || shopAddress.city) {
+                    try {
+                        const geo = await geocodeAddress(shopAddress.street, shopAddress.city, shopAddress.state);
+                        if (geo.success) {
+                            shopAddress.lat = geo.lat;
+                            shopAddress.lng = geo.lng;
+                            console.log(`✅ Geocoded shop signup: ${geo.lat}, ${geo.lng}`);
+                        } else {
+                            console.log(`⚠️ Geocode skipped for shop: ${geo.error}`);
+                        }
+                    } catch (geoErr) {
+                        console.error('⚠️ Geocode threw:', geoErr.message);
+                    }
+                }
+
                 user = new Shop({
                     businessName,
                     ownerName,
                     phone,
                     password: hashedPassword,
-                    address: address || {}
+                    address: shopAddress,
                 });
                 break;
-            case 'distributor':
+            }
+            case 'distributor': {
+                const distAddress = {
+                    street: address?.street || '',
+                    city: address?.city || '',
+                    state: address?.state || '',
+                    landmark: address?.landmark || '',
+                    lat: 0,
+                    lng: 0,
+                };
+
+                // ✅ Auto-geocode
+                if (distAddress.street || distAddress.city) {
+                    try {
+                        const geo = await geocodeAddress(distAddress.street, distAddress.city, distAddress.state);
+                        if (geo.success) {
+                            distAddress.lat = geo.lat;
+                            distAddress.lng = geo.lng;
+                            console.log(`✅ Geocoded distributor signup: ${geo.lat}, ${geo.lng}`);
+                        } else {
+                            console.log(`⚠️ Geocode skipped for distributor: ${geo.error}`);
+                        }
+                    } catch (geoErr) {
+                        console.error('⚠️ Geocode threw:', geoErr.message);
+                    }
+                }
+
                 user = new Distributor({
                     businessName,
                     ownerName,
                     phone,
                     password: hashedPassword,
-                    address: address || {}
+                    address: distAddress,
                 });
                 break;
+            }
             case 'rider':
                 user = new Rider({
                     fullName: ownerName,
