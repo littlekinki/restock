@@ -65,10 +65,20 @@ export default function RiderScreen() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [chatReceiver, setChatReceiver] = useState(null);
 
+  // Notifications
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
+
   useEffect(() => {
     loadUser();
     loadDeliveries();
     startLocationUpdates();
+    loadUnreadCount();
+
+    const interval = setInterval(loadUnreadCount, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadUser = async () => {
@@ -135,6 +145,7 @@ export default function RiderScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     loadDeliveries();
+    loadUnreadCount();
   };
 
   const handleTabChange = (tab) => {
@@ -474,6 +485,90 @@ export default function RiderScreen() {
     }
   };
 
+    // ============================================================
+  // NOTIFICATIONS
+  // ============================================================
+  const loadNotifications = async () => {
+    try {
+      setLoadingNotifs(true);
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/notifications?limit=50`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Load notifications error:', error);
+    } finally {
+      setLoadingNotifs(false);
+    }
+  };
+
+  const loadUnreadCount = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/notifications/unread-count`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (data.success) setUnreadCount(data.unreadCount || 0);
+    } catch (error) {
+      console.error('Unread count error:', error);
+    }
+  };
+
+  const markNotificationRead = async (notif) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      await fetch(`${API_URL}/notifications/${notif._id}/read`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      setNotifications(prev => prev.map(n =>
+        n._id === notif._id ? { ...n, read: true } : n
+      ));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Mark read error:', error);
+    }
+  };
+
+  const markAllNotificationsRead = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      await fetch(`${API_URL}/notifications/read-all`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Mark all read error:', error);
+    }
+  };
+
+  const openNotifications = async () => {
+    setShowNotificationsModal(true);
+    await loadNotifications();
+  };
+
+  const handleNotificationPress = async (notif) => {
+    if (!notif.read) await markNotificationRead(notif);
+    setShowNotificationsModal(false);
+  };
+
+  const timeAgo = (dateStr) => {
+    const seconds = Math.floor((new Date() - new Date(dateStr)) / 1000);
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    return new Date(dateStr).toLocaleDateString();
+  };
+
   // ============================================================
   // OPEN CHAT (Rider chats with Shop)
   // ============================================================
@@ -809,9 +904,21 @@ export default function RiderScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.welcome}>Hello, {user?.name || 'Rider'}! 👋</Text>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>🚪</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={openNotifications} style={styles.bellButton}>
+            <Text style={styles.bellIcon}>🔔</Text>
+            {unreadCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Text style={styles.logoutText}>🚪</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -893,6 +1000,76 @@ export default function RiderScreen() {
                 {sendingMessage ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.chatSendText}>Send</Text>}
               </TouchableOpacity>
             </View>
+          </SafeAreaView>
+        </Modal>
+      )}
+      {/* Notifications Modal */}
+      {showNotificationsModal && (
+        <Modal visible={showNotificationsModal} animationType="slide" transparent={false}>
+          <SafeAreaView style={styles.chatContainer}>
+            <View style={styles.chatHeader}>
+              <TouchableOpacity onPress={() => setShowNotificationsModal(false)}>
+                <Text style={styles.chatBack}>← Back</Text>
+              </TouchableOpacity>
+              <View style={styles.chatHeaderInfo}>
+                <Text style={styles.chatHeaderName}>🔔 Notifications</Text>
+                <Text style={styles.chatHeaderRole}>
+                  {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
+                </Text>
+              </View>
+              {unreadCount > 0 ? (
+                <TouchableOpacity onPress={markAllNotificationsRead}>
+                  <Text style={styles.markAllRead}>Mark all read</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={{ width: 60 }} />
+              )}
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 16 }}>
+              {loadingNotifs ? (
+                <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
+              ) : notifications.length === 0 ? (
+                <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+                  <Text style={{ fontSize: 48, marginBottom: 12 }}>🔔</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.primary }}>
+                    No notifications yet
+                  </Text>
+                </View>
+              ) : (
+                notifications.map((notif, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[styles.notifRow, !notif.read && styles.notifRowUnread]}
+                    onPress={() => handleNotificationPress(notif)}
+                  >
+                    <View style={styles.notifIconWrap}>
+                      <Text style={styles.notifIcon}>
+                        {notif.type === 'order_placed' ? '📦' :
+                         notif.type === 'new_order' ? '🆕' :
+                         notif.type === 'order_confirmed' ? '✅' :
+                         notif.type === 'rider_assigned' ? '🏍️' :
+                         notif.type === 'delivery_assigned' ? '🚚' :
+                         notif.type === 'order_delivered' ? '✅' :
+                         notif.type === 'order_cancelled' ? '❌' :
+                         notif.type === 'chat_message' ? '💬' :
+                         notif.type === 'product_request' ? '📝' : '🔔'}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.notifTitle, !notif.read && { fontWeight: '800' }]}>
+                        {notif.title}
+                      </Text>
+                      {notif.body ? (
+                        <Text style={styles.notifBody} numberOfLines={2}>{notif.body}</Text>
+                      ) : null}
+                      <Text style={styles.notifTime}>{timeAgo(notif.createdAt)}</Text>
+                    </View>
+                    {!notif.read && <View style={styles.unreadDot} />}
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
           </SafeAreaView>
         </Modal>
       )}
@@ -1003,4 +1180,76 @@ const styles = StyleSheet.create({
   notifRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },
   notifLabel: { fontSize: 15, fontWeight: '600', color: COLORS.primary },
   notifHint: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  bellButton: { padding: 8, position: 'relative' },
+  bellIcon: { fontSize: 22 },
+  bellBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#E17055',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
+    markAllRead: {
+    fontSize: 12,
+    color: COLORS.secondary,
+    fontWeight: '700',
+  },
+  notifRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.white,
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 8,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  notifRowUnread: {
+    backgroundColor: '#F0F9EC',
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.secondary,
+  },
+  notifIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notifIcon: { fontSize: 18 },
+  notifTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginBottom: 2,
+  },
+  notifBody: {
+    fontSize: 13,
+    color: COLORS.gray,
+    lineHeight: 18,
+  },
+  notifTime: {
+    fontSize: 11,
+    color: COLORS.gray,
+    marginTop: 4,
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.secondary,
+    marginTop: 6,
+  },
 });

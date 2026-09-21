@@ -624,6 +624,14 @@ function showSection(section) {
     const orderList = document.getElementById('orderList');
     const statsContainer = document.getElementById('statsContainer');
     const ordersSection = document.querySelector('.orders-section');
+    const settingsSection = document.getElementById('settingsSection');
+    const earningsSection = document.getElementById('earningsSection');
+    const notificationsSection = document.getElementById('notificationsSection');
+
+    // Hide all secondary sections first
+    if (settingsSection) settingsSection.style.display = 'none';
+    if (earningsSection) earningsSection.style.display = 'none';
+    if (notificationsSection) notificationsSection.style.display = 'none';
 
     switch(section) {
         case 'dashboard':
@@ -633,70 +641,68 @@ function showSection(section) {
             orderList.innerHTML = '<div class="loading">Loading orders...</div>';
             fetchOrders();
             break;
+
         case 'products':
-            // Show products message
+            statsContainer.style.display = 'grid';
             if (ordersSection) ordersSection.style.display = 'block';
             orderList.innerHTML = '<div class="loading">Loading products...</div>';
             loadDistributorProducts();
             break;
+
         case 'deliveries':
+            statsContainer.style.display = 'grid';
             if (ordersSection) ordersSection.style.display = 'block';
             orderList.innerHTML = '<div class="loading">Loading deliveries...</div>';
             loadDistributorDeliveries();
             break;
+
         case 'payments':
+            statsContainer.style.display = 'grid';
             if (ordersSection) ordersSection.style.display = 'block';
             orderList.innerHTML = '<div class="loading">Loading payments...</div>';
             loadDistributorPayments();
             break;
-        case 'earnings':
-            statsContainer.style.display = 'none';
-            if (ordersSection) ordersSection.style.display = 'none';
-            const earningsSec = document.getElementById('earningsSection');
-            if (earningsSec) earningsSec.style.display = 'block';
-            loadDistributorEarnings();
-            break;
+
         case 'reports':
+            statsContainer.style.display = 'grid';
             if (ordersSection) ordersSection.style.display = 'block';
             orderList.innerHTML = '<div class="loading">Loading reports...</div>';
             loadDistributorReports();
             break;
-       case 'settings':
-        statsContainer.style.display = 'none';
-        if (ordersSection) ordersSection.style.display = 'none';
-        
-        // Hide add product section // 
-        const addProductSec = document.getElementById('addProductSection');
-        if (addProductSec) addProductSec.style.display = 'none';
-        
-        // Show settings section
-        const settingsSection = document.getElementById('settingsSection');
-        if (settingsSection) {
-            settingsSection.style.display = 'block';
-            loadSettingsData(); // Load current settings
-       }
-       break;
 
-       case 'dashboard':
-       case 'orders':
-        statsContainer.style.display = 'grid';
-        if (ordersSection) ordersSection.style.display = 'block';
-        
-        // Hide settings section
-        const settingsSec1 = document.getElementById('settingsSection');
-        if (settingsSec1) settingsSec1.style.display = 'none';
+        case 'earnings':
+            statsContainer.style.display = 'none';
+            if (ordersSection) ordersSection.style.display = 'none';
+            if (earningsSection) earningsSection.style.display = 'block';
+            loadDistributorEarnings();
+            break;
 
-        const earningsSec1 = document.getElementById('earningsSection');
-        if (earningsSec1) earningsSec1.style.display = 'none';
-        
-        orderList.innerHTML = '<div class="loading">Loading orders...</div>';
-        fetchOrders();
-        break;
+        case 'notifications':
+            statsContainer.style.display = 'none';
+            if (ordersSection) ordersSection.style.display = 'none';
+            if (notificationsSection) notificationsSection.style.display = 'block';
+            loadNotifications();
+            break;
+
+        case 'settings':
+            statsContainer.style.display = 'none';
+            if (ordersSection) ordersSection.style.display = 'none';
+
+            const addProductSec = document.getElementById('addProductSection');
+            if (addProductSec) addProductSec.style.display = 'none';
+
+            if (settingsSection) {
+                settingsSection.style.display = 'block';
+                loadSettingsData();
+            }
+            break;
+
         default:
+            statsContainer.style.display = 'grid';
+            if (ordersSection) ordersSection.style.display = 'block';
             fetchOrders();
     }
 }
-
 // ============================================================
 // INITIAL LOAD
 // ============================================================
@@ -1465,4 +1471,148 @@ function renderDistributorEarnings(s, rows) {
             <tbody>${html}</tbody>
         </table>
     `;
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+let notifPollTimer = null;
+
+async function loadUnreadCount() {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const res = await fetch(`${API_URL}/notifications/unread-count`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) updateNotifBadge(data.unreadCount || 0);
+    } catch (e) { /* silent */ }
+}
+
+function updateNotifBadge(count) {
+    const badge = document.getElementById('notifBadge');
+    if (!badge) return;
+    if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.style.display = 'inline';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+async function loadNotifications() {
+    const container = document.getElementById('notificationsList');
+    if (!container) return;
+    container.innerHTML = '<div class="loading">Loading notifications...</div>';
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/notifications?limit=50`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!data.success) {
+            container.innerHTML = '<div class="empty-state"><p>❌</p><p>Failed to load</p></div>';
+            return;
+        }
+
+        updateNotifBadge(data.unreadCount || 0);
+
+        const label = document.getElementById('notifUnreadLabel');
+        if (label) {
+            label.textContent = data.unreadCount > 0
+                ? `${data.unreadCount} unread`
+                : 'All caught up';
+        }
+        const markAllBtn = document.getElementById('markAllBtn');
+        if (markAllBtn) markAllBtn.style.display = data.unreadCount > 0 ? 'inline-block' : 'none';
+
+        if (!data.notifications || data.notifications.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>🔔</p><p>No notifications yet.</p></div>';
+            return;
+        }
+
+        container.innerHTML = data.notifications.map(n => `
+            <div class="notif-row ${n.read ? '' : 'unread'}" onclick="tapNotification('${n._id}', ${n.read})">
+                <div class="notif-icon-wrap">${notifIcon(n.type)}</div>
+                <div class="notif-content">
+                    <div class="notif-title">${n.title}</div>
+                    ${n.body ? `<div class="notif-body">${n.body}</div>` : ''}
+                    <div class="notif-time">${timeAgo(n.createdAt)}</div>
+                </div>
+                ${n.read ? '' : '<div class="notif-dot"></div>'}
+            </div>
+        `).join('');
+    } catch (e) {
+        console.error(e);
+        container.innerHTML = '<div class="empty-state"><p>❌</p><p>Network error</p></div>';
+    }
+}
+
+async function tapNotification(id, isRead) {
+    if (!isRead) {
+        try {
+            const token = localStorage.getItem('token');
+            await fetch(`${API_URL}/notifications/${id}/read`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            await loadNotifications();
+            await loadUnreadCount();
+        } catch (e) { console.error(e); }
+    }
+}
+
+async function markAllNotificationsRead() {
+    try {
+        const token = localStorage.getItem('token');
+        await fetch(`${API_URL}/notifications/read-all`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        await loadNotifications();
+        await loadUnreadCount();
+        showToast('✅ All marked as read');
+    } catch (e) {
+        showToast('❌ Failed');
+    }
+}
+
+function notifIcon(type) {
+    const map = {
+        order_placed: '📦',
+        new_order: '🆕',
+        order_confirmed: '✅',
+        rider_assigned: '🏍️',
+        delivery_assigned: '🚚',
+        order_delivered: '✅',
+        order_cancelled: '❌',
+        chat_message: '💬',
+        product_request: '📝',
+    };
+    return map[type] || '🔔';
+}
+
+function timeAgo(dateStr) {
+    const seconds = Math.floor((new Date() - new Date(dateStr)) / 1000);
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+    if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
+    return new Date(dateStr).toLocaleDateString();
+}
+
+// Poll unread count every 30s
+function startNotifPolling() {
+    if (notifPollTimer) clearInterval(notifPollTimer);
+    loadUnreadCount();
+    notifPollTimer = setInterval(loadUnreadCount, 30000);
+}
+
+// Kick it off when the page loads
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startNotifPolling);
+} else {
+    startNotifPolling();
 }

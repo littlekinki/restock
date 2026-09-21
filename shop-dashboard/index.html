@@ -23,6 +23,10 @@
 
             <div class="header-actions">
                 <button class="btn btn-outline" onclick="showSection('dashboard')">📊 Dashboard</button>
+                <button class="btn btn-outline" onclick="showSection('notifications')" style="position: relative;">
+                    🔔 Notifications
+                    <span id="notifBadge" class="notif-badge" style="display:none;">0</span>
+                </button>
                 <button class="btn btn-outline" onclick="showSection('settings')">⚙️ Settings</button>
                 <button class="btn btn-outline" onclick="refreshData()">🔄 Refresh</button>
                 <button class="btn btn-outline" onclick="logout()">🚪 Logout</button>
@@ -110,6 +114,22 @@
                 </div>
             </section>
         </div>
+
+        <!-- ✅ NOTIFICATIONS SECTION -->
+        <section class="notifications-section" id="notificationsSection" style="display: none; margin-top: 32px;">
+            <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2>🔔 Notifications</h2>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <span id="notifUnreadLabel" style="font-size: 13px; color: var(--gray-500);"></span>
+                    <button class="btn btn-outline btn-sm" onclick="markAllNotificationsRead()" id="markAllBtn" style="display:none;">
+                        ✓ Mark all read
+                    </button>
+                </div>
+            </div>
+            <div id="notificationsList">
+                <div class="loading">Loading notifications...</div>
+            </div>
+        </section>
 
         <!-- ============================================================
              SETTINGS SECTION

@@ -37,6 +37,10 @@
                 <a href="#" class="nav-item" onclick="showSection('settings')">
                     <span class="nav-icon">⚙️</span> Settings
                 </a>
+                <a href="#" class="nav-item" onclick="showSection('notifications')">
+                    <span class="nav-icon">🔔</span> Notifications
+                    <span class="badge" id="notifBadge" style="display:none;">0</span>
+                </a>
                 <a href="#" class="nav-item" onclick="showSection('requests')">
                     <span class="nav-icon">📝</span> Product Requests
                     <span class="badge" id="requestsBadge" style="display:none;">0</span>
@@ -253,6 +257,22 @@
                     <div id="earningsList">
                         <div class="loading">Loading earnings...</div>
                     </div>
+                </div>
+            </section>
+
+            <!-- ✅ NOTIFICATIONS SECTION -->
+            <section class="users-section" id="notificationsSection" style="display: none;">
+                <div class="section-header">
+                    <h2>🔔 Notifications</h2>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <span id="notifUnreadLabel" style="font-size: 13px; color: var(--gray-500);"></span>
+                        <button class="btn btn-outline" onclick="markAllNotificationsRead()" id="markAllBtn" style="display:none; padding: 8px 14px; font-size: 13px;">
+                            ✓ Mark all read
+                        </button>
+                    </div>
+                </div>
+                <div class="users-list" id="notificationsList">
+                    <div class="loading">Loading notifications...</div>
                 </div>
             </section>
 
