@@ -16,13 +16,12 @@ async function sendSMS(phone, message) {
 
         const apiKey = process.env.TERMII_API_KEY;
 
-        
         const payload = {
             to: formattedPhone,
-            from: 'OE Alert',     
+            from: 'OE Alert',
             sms: message,
             type: 'plain',
-            channel: 'dnd'         
+            channel: 'dnd'
         };
 
         console.log('📤 Sending SMS to:', formattedPhone);
@@ -49,7 +48,16 @@ async function sendSMS(phone, message) {
 }
 
 // ============================================================
-// ORDER STATUS MESSAGES 
+// SEND OTP SMS (for forgot password)
+// ============================================================
+async function sendOTPSMS(phone, otp) {
+    const message = `🔐 Restock Verification\n\nYour password reset code is:\n\n${otp}\n\nThis code expires in 10 minutes. Do not share it with anyone.\n\n- Restock`;
+
+    return sendSMS(phone, message);
+}
+
+// ============================================================
+// ORDER STATUS MESSAGES
 // ============================================================
 function getOrderStatusMessage(order, status) {
     const orderId = `#${order._id.slice(-6).toUpperCase()}`;
@@ -87,8 +95,12 @@ async function notifyShopOrderUpdate(order, status) {
     }
 }
 
+// ============================================================
+// EXPORTS — ONE place, all functions
+// ============================================================
 module.exports = {
     sendSMS,
+    sendOTPSMS,
     getOrderStatusMessage,
-    notifyShopOrderUpdate
+    notifyShopOrderUpdate,
 };

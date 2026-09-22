@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const PasswordReset = require('../models/PasswordReset');
+const { sendOTPSMS } = require('../services/smsService');
 const Shop = require('../models/Shop');
 const Distributor = require('../models/Distributor');
 const Rider = require('../models/Rider');
@@ -320,6 +322,199 @@ router.patch('/push-token', auth, async (req, res) => {
         console.error('Push token error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
+});
+
+// ============================================================
+// FORGOT PASSWORD — STEP 1: Request OTP
+// POST /api/auth/forgot-password
+// Body: { phone, role }
+// ============================================================
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { phone, role } = req.body;
+
+    if (!phone || !role) {
+      return res.status(400).json({
+        success: false,
+        error: 'Phone and role are required',
+      });
+    }
+
+    if (!['shop', 'distributor', 'rider'].includes(role)) {
+      return res.status(400).json({ success: false, error: 'Invalid role' });
+    }
+
+    // Find the user
+    let user = null;
+    if (role === 'shop') user = await Shop.findOne({ phone });
+    else if (role === 'distributor') user = await Distributor.findOne({ phone });
+    else if (role === 'rider') user = await Rider.findOne({ phone });
+
+    // Security note: don't leak whether the account exists.
+    // But for usability in a small platform, we tell them.
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'No account found with that phone number for this role',
+      });
+    }
+
+    // Rate limit: 60-second cooldown between requests
+    const recent = await PasswordReset.findOne({
+      phone,
+      role,
+      used: false,
+      createdAt: { $gt: new Date(Date.now() - 60000) },
+    });
+
+    if (recent) {
+      const secondsLeft = Math.ceil(
+        (60000 - (Date.now() - recent.createdAt.getTime())) / 1000
+      );
+      return res.status(429).json({
+        success: false,
+        error: `Please wait ${secondsLeft} seconds before requesting another code`,
+      });
+    }
+
+    // Invalidate any old unused OTPs for this phone+role
+    await PasswordReset.updateMany(
+      { phone, role, used: false },
+      { $set: { used: true } }
+    );
+
+    // Generate 6-digit OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await PasswordReset.create({
+      phone,
+      role,
+      otp,
+      expiresAt,
+      used: false,
+    });
+
+    // Send via SMS
+    try {
+      await sendOTPSMS(phone, otp);
+      console.log(`📱 OTP sent to ${phone}`);
+    } catch (smsError) {
+      console.error('⚠️ OTP SMS failed:', smsError.message);
+      // In dev/testing, allow fallback: log OTP to console
+      console.log(`🔑 [DEV FALLBACK] OTP for ${phone}: ${otp}`);
+    }
+
+    res.json({
+      success: true,
+      message: 'Verification code sent',
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// FORGOT PASSWORD — STEP 2: Verify OTP
+// POST /api/auth/verify-otp
+// Body: { phone, role, otp }
+// ============================================================
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { phone, role, otp } = req.body;
+
+    if (!phone || !role || !otp) {
+      return res.status(400).json({ success: false, error: 'Missing fields' });
+    }
+
+    const record = await PasswordReset.findOne({
+      phone,
+      role,
+      otp,
+      used: false,
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!record) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or expired code',
+      });
+    }
+
+    res.json({ success: true, message: 'Code verified' });
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// FORGOT PASSWORD — STEP 3: Reset password
+// POST /api/auth/reset-password
+// Body: { phone, role, otp, newPassword }
+// ============================================================
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { phone, role, otp, newPassword } = req.body;
+
+    if (!phone || !role || !otp || !newPassword) {
+      return res.status(400).json({ success: false, error: 'Missing fields' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 6 characters',
+      });
+    }
+
+    // Verify OTP again (never trust the client)
+    const record = await PasswordReset.findOne({
+      phone,
+      role,
+      otp,
+      used: false,
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!record) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or expired code',
+      });
+    }
+
+    // Hash new password
+    const bcrypt = require('bcryptjs');
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    // Update the right model
+    let updated = null;
+    if (role === 'shop') {
+      updated = await Shop.findOneAndUpdate({ phone }, { password: hashed });
+    } else if (role === 'distributor') {
+      updated = await Distributor.findOneAndUpdate({ phone }, { password: hashed });
+    } else if (role === 'rider') {
+      updated = await Rider.findOneAndUpdate({ phone }, { password: hashed });
+    }
+
+    if (!updated) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    // Mark OTP as used
+    record.used = true;
+    await record.save();
+
+    console.log(`✅ Password reset for ${role} ${phone}`);
+
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 module.exports = router;
