@@ -4,13 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Restock - Admin Dashboard</title>
-    <link rel="stylesheet" href="/admin-dashboard/style.css">
+    <link rel="stylesheet" href="./style.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="app">
-        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
                 <img src="../landing-page/assets/images/logo.png" alt="Restock" class="logo-img" />
@@ -50,10 +49,7 @@
                 <button class="btn btn-outline" onclick="logout()">🚪 Logout</button>
             </div>
         </aside>
-
-        <!-- Main Content -->
         <main class="main-content">
-            <!-- Header -->
             <header class="header">
                 <div>
                     <h1>📊 Admin Dashboard</h1>
@@ -66,153 +62,56 @@
                     <span id="lastUpdated" style="font-size: 12px; color: var(--gray-500);"></span>
                 </div>
             </header>
-
-            <!-- Stats Cards -->
             <section class="stats" id="statsContainer">
-                <div class="stat-card">
-                    <p class="stat-label">📦 Total Orders</p>
-                    <p class="stat-value" id="totalOrders">0</p>
-                </div>
-                <div class="stat-card">
-                    <p class="stat-label">💰 Total Revenue</p>
-                    <p class="stat-value" id="totalRevenue">₦0</p>
-                </div>
-                <div class="stat-card">
-                    <p class="stat-label">🏪 Active Shops</p>
-                    <p class="stat-value" id="activeShops">0</p>
-                </div>
-                <div class="stat-card">
-                    <p class="stat-label">📦 Active Distributors</p>
-                    <p class="stat-value" id="activeDistributors">0</p>
-                </div>
-                <div class="stat-card">
-                    <p class="stat-label">🏍️ Active Riders</p>
-                    <p class="stat-value" id="activeRiders">0</p>
-                </div>
-                <div class="stat-card">
-                    <p class="stat-label">📊 Avg Order Value</p>
-                    <p class="stat-value" id="avgOrderValue">₦0</p>
-                </div>
+                <div class="stat-card"><p class="stat-label">📦 Total Orders</p><p class="stat-value" id="totalOrders">0</p></div>
+                <div class="stat-card"><p class="stat-label">💰 Total Revenue</p><p class="stat-value" id="totalRevenue">₦0</p></div>
+                <div class="stat-card"><p class="stat-label">🏪 Active Shops</p><p class="stat-value" id="activeShops">0</p></div>
+                <div class="stat-card"><p class="stat-label">📦 Active Distributors</p><p class="stat-value" id="activeDistributors">0</p></div>
+                <div class="stat-card"><p class="stat-label">🏍️ Active Riders</p><p class="stat-value" id="activeRiders">0</p></div>
+                <div class="stat-card"><p class="stat-label">📊 Avg Order Value</p><p class="stat-value" id="avgOrderValue">₦0</p></div>
             </section>
-
-            <!-- Charts Section -->
             <section class="charts-section">
-                <div class="chart-container">
-                    <h3>📈 Orders Over Time</h3>
-                    <canvas id="ordersChart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <h3>📊 Revenue Over Time</h3>
-                    <canvas id="revenueChart"></canvas>
-                </div>
+                <div class="chart-container"><h3>📈 Orders Over Time</h3><canvas id="ordersChart"></canvas></div>
+                <div class="chart-container"><h3>📊 Revenue Over Time</h3><canvas id="revenueChart"></canvas></div>
             </section>
-
-            <!-- Status Breakdown -->
             <section class="status-section">
                 <div class="status-card">
                     <h3>📋 Order Status Breakdown</h3>
                     <div id="statusBreakdown">
-                        <div class="status-item">
-                            <span>🟡 Pending</span>
-                            <span id="pendingCount">0</span>
-                        </div>
-                        <div class="status-item">
-                            <span>🔵 Confirmed</span>
-                            <span id="confirmedCount">0</span>
-                        </div>
-                        <div class="status-item">
-                            <span>🟣 Picked Up</span>
-                            <span id="pickedUpCount">0</span>
-                        </div>
-                        <div class="status-item">
-                            <span>🟢 Delivered</span>
-                            <span id="deliveredCount">0</span>
-                        </div>
-                        <div class="status-item">
-                            <span>🔴 Cancelled</span>
-                            <span id="cancelledCount">0</span>
-                        </div>
+                        <div class="status-item"><span>🟡 Pending</span><span id="pendingCount">0</span></div>
+                        <div class="status-item"><span>🔵 Confirmed</span><span id="confirmedCount">0</span></div>
+                        <div class="status-item"><span>🟣 Picked Up</span><span id="pickedUpCount">0</span></div>
+                        <div class="status-item"><span>🟢 Delivered</span><span id="deliveredCount">0</span></div>
+                        <div class="status-item"><span>🔴 Cancelled</span><span id="cancelledCount">0</span></div>
                     </div>
                 </div>
-
-                <!-- Top Products -->
-                <div class="status-card">
-                    <h3>🏆 Top Products</h3>
-                    <div id="topProducts">
-                        <p style="color: var(--gray-500); font-size: 14px;">Loading...</p>
-                    </div>
-                </div>
+                <div class="status-card"><h3>🏆 Top Products</h3><div id="topProducts"><p style="color: var(--gray-500); font-size: 14px;">Loading...</p></div></div>
             </section>
-
-            <!-- Recent Orders -->
             <section class="recent-orders">
                 <h3>📋 Recent Orders</h3>
-                <div id="recentOrdersList">
-                    <p style="color: var(--gray-500); font-size: 14px;">Loading...</p>
-                </div>
+                <div id="recentOrdersList"><p style="color: var(--gray-500); font-size: 14px;">Loading...</p></div>
             </section>
-
-            <!-- ✅ USERS SECTIONS -->
-
-            <!-- Shops Section -->
             <section class="users-section" id="shopsSection" style="display: none;">
-                <div class="section-header">
-                    <h2>🏪 All Shops</h2>
-                    <span id="shopsCount" class="count-badge">0</span>
-                </div>
-                <div class="users-list" id="shopsList">
-                    <div class="loading">Loading shops...</div>
-                </div>
+                <div class="section-header"><h2>🏪 All Shops</h2><span id="shopsCount" class="count-badge">0</span></div>
+                <div class="users-list" id="shopsList"><div class="loading">Loading shops...</div></div>
             </section>
-
-            <!-- Distributors Section -->
             <section class="users-section" id="distributorsSection" style="display: none;">
-                <div class="section-header">
-                    <h2>📦 All Distributors</h2>
-                    <span id="distributorsCount" class="count-badge">0</span>
-                </div>
-                <div class="users-list" id="distributorsList">
-                    <div class="loading">Loading distributors...</div>
-                </div>
+                <div class="section-header"><h2>📦 All Distributors</h2><span id="distributorsCount" class="count-badge">0</span></div>
+                <div class="users-list" id="distributorsList"><div class="loading">Loading distributors...</div></div>
             </section>
-
-            <!-- Product Requests Section -->
             <section class="users-section" id="requestsSection" style="display: none;">
-                <div class="section-header">
-                    <h2>📝 Product Requests</h2>
-                    <span id="requestsCount" class="count-badge">0</span>
-                </div>
-                <p style="color: var(--gray-600); margin-bottom: 16px;">
-                    Shops are asking for these products. Find distributors who sell them!
-                </p>
-                <div class="users-list" id="requestsList">
-                    <div class="loading">Loading requests...</div>
-                </div>
+                <div class="section-header"><h2>📝 Product Requests</h2><span id="requestsCount" class="count-badge">0</span></div>
+                <p style="color: var(--gray-600); margin-bottom: 16px;">Shops are asking for these products. Find distributors who sell them!</p>
+                <div class="users-list" id="requestsList"><div class="loading">Loading requests...</div></div>
             </section>
-
-            <!-- Riders Section -->
             <section class="users-section" id="ridersSection" style="display: none;">
-                <div class="section-header">
-                    <h2>🏍️ All Riders</h2>
-                    <span id="ridersCount" class="count-badge">0</span>
-                </div>
-                <div class="users-list" id="ridersList">
-                    <div class="loading">Loading riders...</div>
-                </div>
+                <div class="section-header"><h2>🏍️ All Riders</h2><span id="ridersCount" class="count-badge">0</span></div>
+                <div class="users-list" id="ridersList"><div class="loading">Loading riders...</div></div>
             </section>
-
-            <!-- Orders Section -->
             <section class="users-section" id="ordersSection" style="display: none;">
-                <div class="section-header">
-                    <h2>📦 All Orders</h2>
-                    <span id="ordersCount" class="count-badge">0</span>
-                </div>
-                <div class="users-list" id="ordersList">
-                    <div class="loading">Loading orders...</div>
-                </div>
+                <div class="section-header"><h2>📦 All Orders</h2><span id="ordersCount" class="count-badge">0</span></div>
+                <div class="users-list" id="ordersList"><div class="loading">Loading orders...</div></div>
             </section>
-
-            <!-- ✅ EARNINGS SECTION -->
             <section class="users-section" id="earningsSection" style="display: none;">
                 <div class="section-header">
                     <h2>💰 Platform Earnings & Payouts</h2>
@@ -226,197 +125,90 @@
                         </select>
                     </div>
                 </div>
-
-                <!-- Cash flow cards -->
                 <div class="earnings-grid">
-                    <div class="earning-card earning-green">
-                        <p class="earning-label">💵 Cash In (Delivered)</p>
-                        <p class="earning-value" id="earningsCashIn">₦0</p>
-                        <p class="earning-hint">What shops owe/paid you</p>
-                    </div>
-                    <div class="earning-card earning-orange">
-                        <p class="earning-label">💸 Cash Out (Paid)</p>
-                        <p class="earning-value" id="earningsCashOut">₦0</p>
-                        <p class="earning-hint">What you've paid distributors</p>
-                    </div>
-                    <div class="earning-card earning-red">
-                        <p class="earning-label">📉 Owed to Distributors</p>
-                        <p class="earning-value" id="earningsOwed">₦0</p>
-                        <p class="earning-hint">Unpaid orders total</p>
-                    </div>
-                    <div class="earning-card earning-blue">
-                        <p class="earning-label">📊 Net Position</p>
-                        <p class="earning-value" id="earningsNet">₦0</p>
-                        <p class="earning-hint">Cash in − Cash out</p>
-                    </div>
+                    <div class="earning-card earning-green"><p class="earning-label">💵 Cash In (Delivered)</p><p class="earning-value" id="earningsCashIn">₦0</p><p class="earning-hint">What shops owe/paid you</p></div>
+                    <div class="earning-card earning-orange"><p class="earning-label">💸 Cash Out (Paid)</p><p class="earning-value" id="earningsCashOut">₦0</p><p class="earning-hint">What you've paid distributors</p></div>
+                    <div class="earning-card earning-red"><p class="earning-label">📉 Owed to Distributors</p><p class="earning-value" id="earningsOwed">₦0</p><p class="earning-hint">Unpaid orders total</p></div>
+                    <div class="earning-card earning-blue"><p class="earning-label">📊 Net Position</p><p class="earning-value" id="earningsNet">₦0</p><p class="earning-hint">Cash in − Cash out</p></div>
                 </div>
-
-                <!-- Order payout table -->
                 <div class="earnings-table-wrap">
                     <h3 style="margin-bottom: 16px;">📋 Order Breakdown</h3>
-                    <div id="earningsList">
-                        <div class="loading">Loading earnings...</div>
-                    </div>
+                    <div id="earningsList"><div class="loading">Loading earnings...</div></div>
                 </div>
             </section>
-
-            <!-- ✅ NOTIFICATIONS SECTION -->
             <section class="users-section" id="notificationsSection" style="display: none;">
                 <div class="section-header">
                     <h2>🔔 Notifications</h2>
                     <div style="display: flex; gap: 12px; align-items: center;">
                         <span id="notifUnreadLabel" style="font-size: 13px; color: var(--gray-500);"></span>
-                        <button class="btn btn-outline" onclick="markAllNotificationsRead()" id="markAllBtn" style="display:none; padding: 8px 14px; font-size: 13px;">
-                            ✓ Mark all read
-                        </button>
+                        <button class="btn btn-outline" onclick="markAllNotificationsRead()" id="markAllBtn" style="display:none; padding: 8px 14px; font-size: 13px;">✓ Mark all read</button>
                     </div>
                 </div>
-                <div class="users-list" id="notificationsList">
-                    <div class="loading">Loading notifications...</div>
-                </div>
+                <div class="users-list" id="notificationsList"><div class="loading">Loading notifications...</div></div>
             </section>
-
-            <!-- ✅ ADMIN SETTINGS SECTION -->
             <section class="settings-section" id="settingsSection" style="display: none; margin-top: 32px;">
-                
-                <!-- Platform Settings -->
                 <div class="settings-card">
                     <h2>⚙️ Platform Settings</h2>
                     <form id="platformForm" onsubmit="savePlatformSettings(event)">
                         <div class="form-row">
-                            <div class="form-group">
-                                <label>Commission Rate (%)</label>
-                                <input type="number" id="settingsCommission" placeholder="e.g., 3" step="0.1" />
-                            </div>
-                            <div class="form-group">
-                                <label>Default Delivery Fee (₦)</label>
-                                <input type="number" id="settingsDefaultDeliveryFee" placeholder="e.g., 1000" />
-                            </div>
+                            <div class="form-group"><label>Commission Rate (%)</label><input type="number" id="settingsCommission" placeholder="e.g., 3" step="0.1" /></div>
+                            <div class="form-group"><label>Default Delivery Fee (₦)</label><input type="number" id="settingsDefaultDeliveryFee" placeholder="e.g., 1000" /></div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group">
-                                <label>Minimum Order (₦)</label>
-                                <input type="number" id="settingsMinOrder" placeholder="e.g., 5000" />
-                            </div>
-                            <div class="form-group">
-                                <label>Platform Name</label>
-                                <input type="text" id="settingsPlatformName" placeholder="e.g., Restock" />
-                            </div>
+                            <div class="form-group"><label>Minimum Order (₦)</label><input type="number" id="settingsMinOrder" placeholder="e.g., 5000" /></div>
+                            <div class="form-group"><label>Platform Name</label><input type="text" id="settingsPlatformName" placeholder="e.g., Restock" /></div>
                         </div>
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">💾 Save Platform Settings</button>
-                        </div>
+                        <div class="form-actions"><button type="submit" class="btn btn-primary">💾 Save Platform Settings</button></div>
                     </form>
                 </div>
-                
-                <!-- User Management -->
                 <div class="settings-card">
                     <h2>👥 User Management</h2>
                     <div class="user-stats">
-                        <div class="user-stat">
-                            <span class="user-stat-number" id="totalShops">0</span>
-                            <span class="user-stat-label">🏪 Shops</span>
-                        </div>
-                        <div class="user-stat">
-                            <span class="user-stat-number" id="totalDistributors">0</span>
-                            <span class="user-stat-label">📦 Distributors</span>
-                        </div>
-                        <div class="user-stat">
-                            <span class="user-stat-number" id="totalRiders">0</span>
-                            <span class="user-stat-label">🏍️ Riders</span>
-                        </div>
+                        <div class="user-stat"><span class="user-stat-number" id="totalShops">0</span><span class="user-stat-label">🏪 Shops</span></div>
+                        <div class="user-stat"><span class="user-stat-number" id="totalDistributors">0</span><span class="user-stat-label">📦 Distributors</span></div>
+                        <div class="user-stat"><span class="user-stat-number" id="totalRiders">0</span><span class="user-stat-label">🏍️ Riders</span></div>
                     </div>
-                    <div class="form-actions" style="margin-top: 16px;">
-                        <button class="btn btn-outline" onclick="viewAllUsers()">👁️ View All Users</button>
-                    </div>
+                    <div class="form-actions" style="margin-top: 16px;"><button class="btn btn-outline" onclick="viewAllUsers()">👁️ View All Users</button></div>
                 </div>
-
-                <!-- Bank Details -->
                 <div class="settings-card">
                     <h2>💰 Bank Details (For Customer Payments)</h2>
                     <form id="bankForm" onsubmit="saveAdminBankDetails(event)">
                         <div class="form-row">
-                            <div class="form-group">
-                                <label>Bank Name</label>
-                                <input type="text" id="settingsBankName" placeholder="e.g., GTBank" />
-                            </div>
-                            <div class="form-group">
-                                <label>Account Number</label>
-                                <input type="text" id="settingsAccountNumber" placeholder="e.g., 0123456789" />
-                            </div>
+                            <div class="form-group"><label>Bank Name</label><input type="text" id="settingsBankName" placeholder="e.g., GTBank" /></div>
+                            <div class="form-group"><label>Account Number</label><input type="text" id="settingsAccountNumber" placeholder="e.g., 0123456789" /></div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Account Name</label>
-                                <input type="text" id="settingsAccountName" placeholder="e.g., Restock / Morwave" />
-                            </div>
-                        </div>
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">💾 Save Bank Details</button>
-                        </div>
+                        <div class="form-row"><div class="form-group"><label>Account Name</label><input type="text" id="settingsAccountName" placeholder="e.g., Restock / Morwave" /></div></div>
+                        <div class="form-actions"><button type="submit" class="btn btn-primary">💾 Save Bank Details</button></div>
                     </form>
                 </div>
-                
-                <!-- Notification Settings -->
                 <div class="settings-card">
                     <h2>🔔 Notification Settings</h2>
                     <div class="settings-toggle">
-                        <div>
-                            <p><strong>SMS Notifications</strong></p>
-                            <p style="font-size: 13px; color: var(--gray-500);">Send SMS updates to users</p>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" id="adminSmsNotifications" checked />
-                            <span class="slider"></span>
-                        </label>
+                        <div><p><strong>SMS Notifications</strong></p><p style="font-size: 13px; color: var(--gray-500);">Send SMS updates to users</p></div>
+                        <label class="switch"><input type="checkbox" id="adminSmsNotifications" checked /><span class="slider"></span></label>
                     </div>
                     <div class="settings-toggle">
-                        <div>
-                            <p><strong>WhatsApp Notifications</strong></p>
-                            <p style="font-size: 13px; color: var(--gray-500);">Send WhatsApp updates to users</p>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" id="adminWhatsappNotifications" checked />
-                            <span class="slider"></span>
-                        </label>
+                        <div><p><strong>WhatsApp Notifications</strong></p><p style="font-size: 13px; color: var(--gray-500);">Send WhatsApp updates to users</p></div>
+                        <label class="switch"><input type="checkbox" id="adminWhatsappNotifications" checked /><span class="slider"></span></label>
                     </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-primary" onclick="saveAdminNotifications()">💾 Save Notifications</button>
-                    </div>
+                    <div class="form-actions"><button type="button" class="btn btn-primary" onclick="saveAdminNotifications()">💾 Save Notifications</button></div>
                 </div>
-                
-                <!-- Maintenance Mode -->
                 <div class="settings-card">
                     <h2>🔧 Maintenance Mode</h2>
-                    <p style="font-size: 14px; color: var(--gray-600); margin-bottom: 16px;">
-                        When enabled, only admins can access the platform.
-                    </p>
+                    <p style="font-size: 14px; color: var(--gray-600); margin-bottom: 16px;">When enabled, only admins can access the platform.</p>
                     <div class="settings-toggle">
-                        <div>
-                            <p><strong>Enable Maintenance Mode</strong></p>
-                            <p style="font-size: 13px; color: var(--gray-500);">Temporarily disable the platform for users</p>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" id="maintenanceMode" />
-                            <span class="slider"></span>
-                        </label>
+                        <div><p><strong>Enable Maintenance Mode</strong></p><p style="font-size: 13px; color: var(--gray-500);">Temporarily disable the platform for users</p></div>
+                        <label class="switch"><input type="checkbox" id="maintenanceMode" /><span class="slider"></span></label>
                     </div>
                 </div>
-                
-                <!-- Danger Zone -->
                 <div class="settings-card" style="border: 1px solid #E17055;">
                     <h2 style="color: #E17055;">⚠️ Danger Zone</h2>
-                    <p style="font-size: 14px; color: var(--gray-600); margin-bottom: 16px;">
-                        These actions cannot be undone.
-                    </p>
-                    <button class="btn" style="background: #E17055; color: white;" onclick="deactivatePlatform()">
-                        🗑️ Deactivate Platform
-                    </button>
+                    <p style="font-size: 14px; color: var(--gray-600); margin-bottom: 16px;">These actions cannot be undone.</p>
+                    <button class="btn" style="background: #E17055; color: white;" onclick="deactivatePlatform()">🗑️ Deactivate Platform</button>
                 </div>
             </section>
         </main>
     </div>
-
-    <script src="script.js"></script>
+    <script src="./script.js"></script>
 </body>
 </html>
