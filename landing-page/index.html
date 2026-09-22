@@ -88,7 +88,72 @@
                     <div class="form-group"><label>Password</label><input type="password" id="loginPassword" placeholder="Enter your password" required /></div>
                     <button type="submit" class="btn btn-primary btn-full">Log In</button>
                 </form>
-                <p class="form-footer">Don't have an account? <a href="#" onclick="openRegister()">Sign up</a></p>
+                <p class="form-footer" style="text-align: center; margin-top: 12px;">
+                    <a href="#" onclick="openForgot()" style="color: var(--gray-600); font-size: 14px;">Forgot Password?</a>
+                </p>
+                <p class="form-footer">
+                    Don't have an account? <a href="#" onclick="openRegister()">Sign up</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div class="modal" id="forgotModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔑 Forgot Password</h2>
+                <button class="modal-close" onclick="closeModal('forgotModal')">✕</button>
+            </div>
+            <div class="modal-body">
+
+                <!-- Step 1: Phone -->
+                <div id="forgotStep1">
+                    <p style="color: var(--gray-600); margin-bottom: 16px; font-size: 14px;">
+                        Enter your phone number. We'll send you a 6-digit code.
+                    </p>
+                    <div class="role-selector" style="margin-bottom: 16px;">
+                        <button class="role-btn active" onclick="fpSelectRole('shop', this)">🏪 Shop</button>
+                        <button class="role-btn" onclick="fpSelectRole('distributor', this)">📦 Distributor</button>
+                        <button class="role-btn" onclick="fpSelectRole('rider', this)">🚚 Rider</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" id="fpPhone" placeholder="08012345678" required />
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="fpRequestOTP()">📱 Send Code</button>
+                </div>
+
+                <!-- Step 2: OTP -->
+                <div id="forgotStep2" style="display: none;">
+                    <p style="color: var(--gray-600); margin-bottom: 16px; font-size: 14px;">
+                        Enter the 6-digit code sent to <strong id="fpPhoneDisplay"></strong>
+                    </p>
+                    <div class="form-group">
+                        <label>Verification Code</label>
+                        <input type="text" id="fpOTP" placeholder="123456" maxlength="6"
+                            inputmode="numeric" style="font-size: 24px; letter-spacing: 8px; text-align: center;" />
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="fpVerifyOTP()">✅ Verify Code</button>
+                    <button class="btn btn-outline btn-full" onclick="fpRequestOTP()" style="margin-top: 8px;">Resend Code</button>
+                </div>
+
+                <!-- Step 3: New Password -->
+                <div id="forgotStep3" style="display: none;">
+                    <p style="color: var(--gray-600); margin-bottom: 16px; font-size: 14px;">
+                        Choose a new password.
+                    </p>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" id="fpNewPassword" placeholder="At least 6 characters" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm New Password</label>
+                        <input type="password" id="fpConfirmPassword" placeholder="Re-enter password" required />
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="fpResetPassword()">🔒 Reset Password</button>
+                </div>
+
             </div>
         </div>
     </div>

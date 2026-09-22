@@ -197,5 +197,144 @@ function checkAuth() {
     }
 }
 
+// ============================================================
+// FORGOT PASSWORD FLOW
+// ============================================================
+let fpRole = 'shop';
+let fpPhoneValue = '';
+let fpOtpValue = '';
+
+function openForgot() {
+    // Hide other modals
+    document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+    document.getElementById('forgotModal').classList.add('active');
+
+    // Reset to step 1
+    document.getElementById('forgotStep1').style.display = 'block';
+    document.getElementById('forgotStep2').style.display = 'none';
+    document.getElementById('forgotStep3').style.display = 'none';
+    document.getElementById('fpPhone').value = '';
+    document.getElementById('fpOTP').value = '';
+    document.getElementById('fpNewPassword').value = '';
+    document.getElementById('fpConfirmPassword').value = '';
+
+    fpRole = 'shop';
+    fpPhoneValue = '';
+    fpOtpValue = '';
+
+    // Reset role buttons
+    document.querySelectorAll('#forgotModal .role-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === 0);
+    });
+}
+
+function fpSelectRole(role, btn) {
+    fpRole = role;
+    btn.parentElement.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+async function fpRequestOTP() {
+    const phone = document.getElementById('fpPhone').value.trim();
+    if (!phone) {
+        alert('Please enter your phone number');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, role: fpRole })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            fpPhoneValue = phone;
+            document.getElementById('fpPhoneDisplay').textContent = phone;
+            document.getElementById('forgotStep1').style.display = 'none';
+            document.getElementById('forgotStep2').style.display = 'block';
+            document.getElementById('fpOTP').focus();
+        } else {
+            alert('❌ ' + (data.error || 'Failed to send code'));
+        }
+    } catch (error) {
+        console.error(error);
+        alert('❌ Could not connect. Check your network.');
+    }
+}
+
+async function fpVerifyOTP() {
+    const otp = document.getElementById('fpOTP').value.trim();
+    if (!otp || otp.length !== 6) {
+        alert('Please enter the 6-digit code');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/auth/verify-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: fpPhoneValue, role: fpRole, otp })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            fpOtpValue = otp;
+            document.getElementById('forgotStep2').style.display = 'none';
+            document.getElementById('forgotStep3').style.display = 'block';
+            document.getElementById('fpNewPassword').focus();
+        } else {
+            alert('❌ ' + (data.error || 'Invalid code'));
+        }
+    } catch (error) {
+        console.error(error);
+        alert('❌ Could not connect. Check your network.');
+    }
+}
+
+async function fpResetPassword() {
+    const newPwd = document.getElementById('fpNewPassword').value;
+    const confirmPwd = document.getElementById('fpConfirmPassword').value;
+
+    if (!newPwd || !confirmPwd) {
+        alert('Please fill in both password fields');
+        return;
+    }
+    if (newPwd !== confirmPwd) {
+        alert('Passwords do not match');
+        return;
+    }
+    if (newPwd.length < 6) {
+        alert('Password must be at least 6 characters');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                phone: fpPhoneValue,
+                role: fpRole,
+                otp: fpOtpValue,
+                newPassword: newPwd
+            })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            alert('✅ Password reset! You can now log in with your new password.');
+            closeModal('forgotModal');
+            openLogin();
+        } else {
+            alert('❌ ' + (data.error || 'Failed to reset password'));
+        }
+    } catch (error) {
+        console.error(error);
+        alert('❌ Could not connect. Check your network.');
+    }
+}
+
 // Check auth on page load
 checkAuth();
