@@ -19,6 +19,30 @@ router.get('/test', (req, res) => {
 });
 
 // ============================================================
+// TWILIO WHATSAPP WEBHOOK - POST /whatsapp/twilio
+// ============================================================
+router.post('/twilio', async (req, res) => {
+    try {
+        console.log('📨 Twilio webhook received!');
+        console.log('📨 Body:', JSON.stringify(req.body, null, 2));
+
+        const from = req.body.From;
+        const text = req.body.Body || '';
+
+        if (from && text) {
+            const phone = from.replace('whatsapp:', '').replace('+', '');
+            console.log(`📨 Message from ${phone}: ${text}`);
+            await processWhatsAppMessage(phone, text);
+        }
+
+        res.sendStatus(200);
+    } catch (error) {
+        console.error('❌ Twilio webhook error:', error);
+        res.sendStatus(500);
+    }
+});
+
+// ============================================================
 // VERIFY WEBHOOK - GET /whatsapp/webhook
 // ============================================================
 router.get('/webhook', (req, res) => {
@@ -420,15 +444,54 @@ function parseOrderText(text) {
 }
 
 // ============================================================
-// SEND WHATSAPP MESSAGE
+// SEND WHATSAPP MESSAGE (auto-detects Twilio vs Meta)
 // ============================================================
 async function sendWhatsAppMessage(to, message) {
+    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_WHATSAPP_NUMBER) {
+        return sendViaTwilio(to, message);
+    }
+    return sendViaMeta(to, message);
+}
+
+async function sendViaTwilio(to, message) {
+    try {
+        const accountSid = process.env.TWILIO_ACCOUNT_SID;
+        const authToken = process.env.TWILIO_AUTH_TOKEN;
+        const from = process.env.TWILIO_WHATSAPP_NUMBER;
+
+        const toWhatsApp = to.startsWith('whatsapp:')
+            ? to
+            : `whatsapp:+${to.replace(/^\+/, '')}`;
+
+        const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+        const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+
+        const params = new URLSearchParams();
+        params.append('From', from);
+        params.append('To', toWhatsApp);
+        params.append('Body', message);
+
+        const response = await axios.post(url, params.toString(), {
+            headers: {
+                'Authorization': `Basic ${auth}`,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        });
+
+        console.log(`✅ Twilio WhatsApp sent to ${to}`);
+        return response.data;
+    } catch (error) {
+        console.error('❌ Twilio send error:', error.response?.data || error.message);
+        throw error;
+    }
+}
+
+async function sendViaMeta(to, message) {
     try {
         const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
         const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
 
         const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
-
         const payload = {
             messaging_product: 'whatsapp',
             to: to,
@@ -443,12 +506,10 @@ async function sendWhatsAppMessage(to, message) {
             }
         });
 
-        console.log(`✅ WhatsApp message sent to ${to}`);
+        console.log(`✅ Meta WhatsApp sent to ${to}`);
         return response.data;
-
     } catch (error) {
-        console.error('❌ Error sending WhatsApp message:', error);
-        console.error('Response:', error.response?.data);
+        console.error('❌ Meta send error:', error.response?.data || error.message);
         throw error;
     }
 }
