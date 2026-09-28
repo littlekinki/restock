@@ -22,23 +22,33 @@ router.get('/test', (req, res) => {
 // TWILIO WHATSAPP WEBHOOK - POST /whatsapp/twilio
 // ============================================================
 router.post('/twilio', async (req, res) => {
+    // Always respond 200 to Twilio so it doesn't retry
+    res.sendStatus(200);
+
     try {
         console.log('📨 Twilio webhook received!');
-        console.log('📨 Body:', JSON.stringify(req.body, null, 2));
+        console.log('📨 Raw body:', JSON.stringify(req.body, null, 2));
 
         const from = req.body.From;
         const text = req.body.Body || '';
 
-        if (from && text) {
-            const phone = from.replace('whatsapp:', '').replace('+', '');
-            console.log(`📨 Message from ${phone}: ${text}`);
-            await processWhatsAppMessage(phone, text);
+        if (!from || !text) {
+            console.log('⚠️ Missing From or Body — nothing to process');
+            return;
         }
 
-        res.sendStatus(200);
+        // Convert "whatsapp:+2347046835216" → "07046835216" for Nigerian numbers
+        let phone = from.replace('whatsapp:', '').replace('+', '').trim();
+        if (phone.startsWith('234') && phone.length === 13) {
+            phone = '0' + phone.substring(3);
+        }
+        console.log(`📨 Normalized phone: ${phone}, message: ${text}`);
+
+        await processWhatsAppMessage(phone, text);
     } catch (error) {
-        console.error('❌ Twilio webhook error:', error);
-        res.sendStatus(500);
+        console.error('❌ Twilio webhook error:', error.message);
+        console.error(error.stack);
+        // We already sent 200, so Twilio won't retry
     }
 });
 
@@ -113,7 +123,10 @@ const userSessions = {};
 
 async function processWhatsAppMessage(phone, text) {
     try {
-        const normalizedPhone = phone.replace('+', '').trim();
+        let normalizedPhone = phone.replace(/^\+/, '').trim();
+        if (normalizedPhone.startsWith('234') && normalizedPhone.length === 13) {
+            normalizedPhone = '0' + normalizedPhone.substring(3);
+        }
 
         // Check if shop exists
         let shop = await Shop.findOne({ phone: normalizedPhone });
@@ -407,11 +420,14 @@ Example: "Maryland Supermarket, Chidi Okonkwo"`);
         }
 
     } catch (error) {
-        console.error('❌ Error processing message:', error);
+    console.error('❌ Error processing message:', error);
+    try {
         await sendWhatsAppMessage(phone, `❌ Sorry, something went wrong. Please try again later.`);
+    } catch (sendErr) {
+        console.error('❌ Also failed to send error message:', sendErr.message);
+        // Swallow — do not crash the route
     }
 }
-
 // ============================================================
 // PARSE ORDER TEXT
 // ============================================================
@@ -448,9 +464,17 @@ function parseOrderText(text) {
 // ============================================================
 async function sendWhatsAppMessage(to, message) {
     if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_WHATSAPP_NUMBER) {
-        return sendViaTwilio(to, message);
+        try {
+            return await sendViaTwilio(to, message);
+        } catch (err) {
+            console.error('❌ Twilio send failed, cannot fallback:', err.message);
+            throw err;
+        }
     }
-    return sendViaMeta(to, message);
+    if (process.env.WHATSAPP_PHONE_NUMBER_ID) {
+        return sendViaMeta(to, message);
+    }
+    console.error('⚠️ No WhatsApp provider configured');
 }
 
 async function sendViaTwilio(to, message) {
