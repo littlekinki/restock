@@ -7,11 +7,17 @@
     "icon": "./assets/icon.png",
     "scheme": "restockmobile",
     "userInterfaceStyle": "automatic",
+    "primaryColor": "#01311F",
     "ios": {
       "icon": "./assets/icon.png",
+      "bundleIdentifier": "com.restockshop.restockmobile",
+      "buildNumber": "1",
+      "supportsTablet": false,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Restock uses your location to track deliveries.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Restock uses your location to track deliveries."
+        "NSLocationWhenInUseUsageDescription": "Restock uses your location to find nearby distributors and track deliveries.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Restock uses your location to track deliveries in the background.",
+        "NSCameraUsageDescription": "Restock uses your camera to photograph shopping lists.",
+        "NSPhotoLibraryUsageDescription": "Restock accesses your photos to upload shopping lists."
       }
     },
     "android": {
@@ -21,11 +27,13 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.restockshop.restockmobile",
+      "versionCode": 1,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION"
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA"
       ]
     },
     "web": {
@@ -46,8 +54,8 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#0B3B2C",
-          "image": "./assets/icon.png",
-          "imageWidth": 76
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 240
         }
       ]
     ],

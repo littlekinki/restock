@@ -632,12 +632,31 @@ export default function DistributorScreen() {
   const handleNotificationPress = async (notif) => {
     if (!notif.read) await markNotificationRead(notif);
     setShowNotificationsModal(false);
-    const data = notif.data || {};
-    if (data.orderId) {
-      setActiveTab('dashboard');
-    }
-  };
 
+    const data = notif.data || {};
+
+    // If it's a chat message, open the chat for that order
+    if (notif.type === 'chat_message' && data.orderId) {
+        const order = orders.find(o => o._id === data.orderId);
+        if (order) {
+            await openChat(order);
+            return;
+        }
+    }
+
+    // If it's an order-related notification, show the order detail
+    if (data.orderId) {
+        const order = orders.find(o => o._id === data.orderId);
+        if (order) {
+            handleOrderPress(order);
+            return;
+        }
+    }
+
+    // Fallback — go to dashboard
+    setActiveTab('dashboard');
+  };
+  
   const timeAgo = (dateStr) => {
     const seconds = Math.floor((new Date() - new Date(dateStr)) / 1000);
     if (seconds < 60) return 'just now';

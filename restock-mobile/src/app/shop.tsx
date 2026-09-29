@@ -354,23 +354,28 @@ export default function ShopScreen() {
 
   const handleNotificationPress = async (notif) => {
     if (!notif.read) await markNotificationRead(notif);
-
     setShowNotificationsModal(false);
 
-    // Deep-link based on type
     const data = notif.data || {};
-    if (data.orderId) {
-      if (notif.type === 'chat_message') {
-        // Open the chat for that order — requires an order object
-        // For now, just go to the Orders tab
-        setActiveTab('orders');
-      } else {
-        setActiveTab('orders');
-      }
-    } else if (notif.type === 'product_request') {
-      // Admin — no action on mobile
+
+    // Chat message notification → open the chat for that order
+    if (notif.type === 'chat_message' && data.orderId) {
+        const order = orders.find(o => o._id === data.orderId);
+        if (order) {
+            await openChat(order);
+            return;
+        }
     }
-  };
+
+    // Order-related notification → go to the Orders tab
+    if (data.orderId) {
+        setActiveTab('orders');
+        return;
+    }
+
+    // Fallback
+    setActiveTab('dashboard');
+};
 
   const timeAgo = (dateStr) => {
     const now = new Date();

@@ -199,6 +199,10 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
 
+          <TouchableOpacity onPress={() => router.push('/forgot-password')}>
+            <Text style={styles.forgotLink}>Forgot Password?</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity onPress={() => router.push('/register')}>
             <Text style={styles.registerLink}>
               Don't have an account? Sign up
@@ -315,5 +319,13 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     fontSize: 20,
+  },
+    forgotLink: {
+    color: COLORS.gray,
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 4,
+    fontWeight: '500',
+    fontSize: 14,
   },
 });
