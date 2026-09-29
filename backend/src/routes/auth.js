@@ -11,11 +11,27 @@ const auth = require('../middleware/auth');
 const { geocodeAddress } = require('../services/geocodeService');
 
 // ============================================================
+// PHONE NORMALIZER
+// ============================================================
+// Converts any Nigerian format to local 0-prefixed format.
+// ============================================================
+function normalizePhone(phone) {
+    if (!phone) return phone;
+    let p = phone.replace(/\D/g, '').trim();
+    if (p.startsWith('234') && p.length === 13) {
+        p = '0' + p.substring(3);
+    }
+    return p;
+}
+
+// ============================================================
 // REGISTER
 // ============================================================
 router.post('/register', async (req, res) => {
     try {
         const { role, businessName, ownerName, phone, password, address } = req.body;
+
+        const normalizedPhone = normalizePhone(phone);
 
         // Validate required fields
         if (!role || !phone || !password) {
@@ -62,7 +78,7 @@ router.post('/register', async (req, res) => {
                 user = new Shop({
                     businessName,
                     ownerName,
-                    phone,
+                    phone: normalizedPhone,
                     password: hashedPassword,
                     address: shopAddress,
                 });
@@ -97,7 +113,7 @@ router.post('/register', async (req, res) => {
                 user = new Distributor({
                     businessName,
                     ownerName,
-                    phone,
+                    phone: normalizedPhone,
                     password: hashedPassword,
                     address: distAddress,
                 });
@@ -106,7 +122,7 @@ router.post('/register', async (req, res) => {
             case 'rider':
                 user = new Rider({
                     fullName: ownerName,
-                    phone,
+                    phone: normalizedPhone,
                     password: hashedPassword
                 });
                 break;
@@ -121,7 +137,7 @@ router.post('/register', async (req, res) => {
 
         // Generate JWT token
         const token = jwt.sign(
-            { id: user._id, role: role, phone: user.phone },
+            { id: user._id, role: role, phone: normalizedPhone },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
@@ -133,7 +149,7 @@ router.post('/register', async (req, res) => {
                 id: user._id,
                 role: role,
                 name: user.businessName || user.fullName || user.ownerName,
-                phone: user.phone
+                phone: normalizedPhone,
             },
             message: `${role} registered successfully`
         });
@@ -162,6 +178,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     try {
         const { phone, password, role } = req.body;
+        const normalizedPhone = normalizePhone(phone);
 
         if (!phone || !password || !role) {
             return res.status(400).json({ 
@@ -191,7 +208,7 @@ router.post('/login', async (req, res) => {
                 });
         }
 
-        user = await userModel.findOne({ phone });
+        user = await userModel.findOne({ phone: normalizedPhone });
 
         if (!user) {
             return res.status(401).json({ 
@@ -332,6 +349,7 @@ router.patch('/push-token', auth, async (req, res) => {
 router.post('/forgot-password', async (req, res) => {
   try {
     const { phone, role } = req.body;
+    const normalizedPhone = normalizePhone(phone);
 
     if (!phone || !role) {
       return res.status(400).json({
@@ -346,9 +364,9 @@ router.post('/forgot-password', async (req, res) => {
 
     // Find the user
     let user = null;
-    if (role === 'shop') user = await Shop.findOne({ phone });
-    else if (role === 'distributor') user = await Distributor.findOne({ phone });
-    else if (role === 'rider') user = await Rider.findOne({ phone });
+    if (role === 'shop') user = await Shop.findOne({ phone: normalizedPhone });
+    else if (role === 'distributor') user = await Distributor.findOne({ phone: normalizedPhone });
+    else if (role === 'rider') user = await Rider.findOne({ phone: normalizedPhone });
 
     // Security note: don't leak whether the account exists.
     // But for usability in a small platform, we tell them.
@@ -361,7 +379,7 @@ router.post('/forgot-password', async (req, res) => {
 
     // Rate limit: 60-second cooldown between requests
     const recent = await PasswordReset.findOne({
-      phone,
+      phone: normalizedPhone,
       role,
       used: false,
       createdAt: { $gt: new Date(Date.now() - 60000) },
@@ -379,7 +397,7 @@ router.post('/forgot-password', async (req, res) => {
 
     // Invalidate any old unused OTPs for this phone+role
     await PasswordReset.updateMany(
-      { phone, role, used: false },
+      { phone: normalizedPhone, role, used: false },
       { $set: { used: true } }
     );
 
@@ -388,7 +406,7 @@ router.post('/forgot-password', async (req, res) => {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     await PasswordReset.create({
-      phone,
+      phone: normalizedPhone,
       role,
       otp,
       expiresAt,
@@ -397,12 +415,12 @@ router.post('/forgot-password', async (req, res) => {
 
     // Send via SMS
     try {
-      await sendOTPSMS(phone, otp);
-      console.log(`📱 OTP sent to ${phone}`);
+      await sendOTPSMS(normalizedPhone, otp);
+      console.log(`📱 OTP sent to ${normalizedPhone}`);
     } catch (smsError) {
       console.error('⚠️ OTP SMS failed:', smsError.message);
       // In dev/testing, allow fallback: log OTP to console
-      console.log(`🔑 [DEV FALLBACK] OTP for ${phone}: ${otp}`);
+      console.log(`🔑 [DEV FALLBACK] OTP for ${normalizedPhone}: ${otp}`);
     }
 
     res.json({
@@ -423,13 +441,14 @@ router.post('/forgot-password', async (req, res) => {
 router.post('/verify-otp', async (req, res) => {
   try {
     const { phone, role, otp } = req.body;
+    const normalizedPhone = normalizePhone(phone);
 
     if (!phone || !role || !otp) {
       return res.status(400).json({ success: false, error: 'Missing fields' });
     }
 
     const record = await PasswordReset.findOne({
-      phone,
+      phone: normalizedPhone,
       role,
       otp,
       used: false,
@@ -458,6 +477,7 @@ router.post('/verify-otp', async (req, res) => {
 router.post('/reset-password', async (req, res) => {
   try {
     const { phone, role, otp, newPassword } = req.body;
+    const normalizedPhone = normalizePhone(phone);
 
     if (!phone || !role || !otp || !newPassword) {
       return res.status(400).json({ success: false, error: 'Missing fields' });
@@ -472,7 +492,7 @@ router.post('/reset-password', async (req, res) => {
 
     // Verify OTP again (never trust the client)
     const record = await PasswordReset.findOne({
-      phone,
+      phone: normalizedPhone,
       role,
       otp,
       used: false,
@@ -493,11 +513,11 @@ router.post('/reset-password', async (req, res) => {
     // Update the right model
     let updated = null;
     if (role === 'shop') {
-      updated = await Shop.findOneAndUpdate({ phone }, { password: hashed });
+      updated = await Shop.findOneAndUpdate({ phone: normalizedPhone }, { password: hashed });
     } else if (role === 'distributor') {
-      updated = await Distributor.findOneAndUpdate({ phone }, { password: hashed });
+      updated = await Distributor.findOneAndUpdate({ phone: normalizedPhone }, { password: hashed });
     } else if (role === 'rider') {
-      updated = await Rider.findOneAndUpdate({ phone }, { password: hashed });
+      updated = await Rider.findOneAndUpdate({ phone: normalizedPhone }, { password: hashed });
     }
 
     if (!updated) {
@@ -508,7 +528,7 @@ router.post('/reset-password', async (req, res) => {
     record.used = true;
     await record.save();
 
-    console.log(`✅ Password reset for ${role} ${phone}`);
+    console.log(`✅ Password reset for ${role} ${normalizedPhone}`);
 
     res.json({ success: true, message: 'Password updated successfully' });
   } catch (error) {
