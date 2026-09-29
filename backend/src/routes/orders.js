@@ -105,6 +105,42 @@ router.post('/', auth, async (req, res) => {
             console.error('⚠️ Notification create failed:', notifError.message);
         }
 
+        // ✅ PUSH NOTIFICATION TO DISTRIBUTOR (new order alert)
+        try {
+            const distForPush = await Distributor.findById(distributorId);
+            if (distForPush && distForPush.pushToken && canSendPush(distForPush)) {
+                await pushService.sendPushNotification(
+                    distForPush.pushToken,
+                    '🆕 New Order Received',
+                    `Order #${order._id.toString().slice(-6).toUpperCase()} — ₦${(order.total || 0).toLocaleString()}`,
+                    { orderId: order._id }
+                );
+                console.log(`🔔 Push sent to distributor for order ${order._id}`);
+            } else if (distForPush && !canSendPush(distForPush)) {
+                console.log(`🔕 Push to distributor skipped — disabled push`);
+            } else if (distForPush && !distForPush.pushToken) {
+                console.log(`🔕 Push skipped — distributor has no pushToken`);
+            }
+        } catch (pushError) {
+            console.error('⚠️ Distributor push failed:', pushError.message);
+        }
+
+        // ✅ PUSH NOTIFICATION TO SHOP (order placed confirmation)
+        try {
+            const shopForPush = await Shop.findById(shopId);
+            if (shopForPush && shopForPush.pushToken && canSendPush(shopForPush)) {
+                await pushService.sendPushNotification(
+                    shopForPush.pushToken,
+                    '📦 Order Placed',
+                    `Your order #${order._id.toString().slice(-6).toUpperCase()} was placed successfully.`,
+                    { orderId: order._id }
+                );
+                console.log(`🔔 Push sent to shop for order ${order._id}`);
+            }
+        } catch (pushError) {
+            console.error('⚠️ Shop push failed:', pushError.message);
+        }
+
         // ✅ SCHEDULE AUTO-CALL TO DISTRIBUTOR (AFTER 5 MINUTES)
         setTimeout(async () => {
             try {
