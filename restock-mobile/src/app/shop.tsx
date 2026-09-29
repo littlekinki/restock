@@ -352,30 +352,44 @@ export default function ShopScreen() {
     await loadNotifications();
   };
 
-  const handleNotificationPress = async (notif) => {
+    const handleNotificationPress = async (notif) => {
     if (!notif.read) await markNotificationRead(notif);
     setShowNotificationsModal(false);
 
     const data = notif.data || {};
 
-    // Chat message notification → open the chat for that order
-    if (notif.type === 'chat_message' && data.orderId) {
-        const order = orders.find(o => o._id === data.orderId);
-        if (order) {
-            await openChat(order);
-            return;
-        }
+    // No order attached → just go home
+    if (!data.orderId) {
+      setActiveTab('dashboard');
+      return;
     }
 
-    // Order-related notification → go to the Orders tab
-    if (data.orderId) {
-        setActiveTab('orders');
-        return;
+    // Look in current local orders list first
+    let order = orders.find(o => o._id === data.orderId);
+
+    // Not in local list → fetch it from the backend
+    if (!order) {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        const res = await fetch(`${API_URL}/orders/${data.orderId}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        const json = await res.json();
+        if (json.success) order = json.order;
+      } catch (e) {
+        console.error('Failed to load order for notification:', e);
+      }
     }
 
-    // Fallback
-    setActiveTab('dashboard');
-};
+    // If chat message → open the chat
+    if (notif.type === 'chat_message' && order) {
+      await openChat(order);
+      return;
+    }
+
+    // Otherwise → go to the Orders tab
+    setActiveTab('orders');
+  };
 
   const timeAgo = (dateStr) => {
     const now = new Date();
