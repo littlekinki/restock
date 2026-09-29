@@ -60,7 +60,7 @@ async function sendOTPSMS(phone, otp) {
 // ORDER STATUS MESSAGES
 // ============================================================
 function getOrderStatusMessage(order, status) {
-    const orderId = `#${order._id.slice(-6).toUpperCase()}`;
+    const orderId = `#${order._id.toString().slice(-6).toUpperCase()}`;
     const total = `NGN ${order.total?.toLocaleString() || 0}`;
 
     const messages = {
