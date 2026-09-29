@@ -427,6 +427,7 @@ Example: "Maryland Supermarket, Chidi Okonkwo"`);
         console.error('❌ Also failed to send error message:', sendErr.message);
         // Swallow — do not crash the route
     }
+    }
 }
 // ============================================================
 // PARSE ORDER TEXT
