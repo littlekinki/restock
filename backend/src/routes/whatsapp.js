@@ -482,11 +482,28 @@ async function sendViaTwilio(to, message) {
     try {
         const accountSid = process.env.TWILIO_ACCOUNT_SID;
         const authToken = process.env.TWILIO_AUTH_TOKEN;
-        const from = process.env.TWILIO_WHATSAPP_NUMBER;
+        let from = process.env.TWILIO_WHATSAPP_NUMBER;
 
-        const toWhatsApp = to.startsWith('whatsapp:')
-            ? to
-            : `whatsapp:+${to.replace(/^\+/, '')}`;
+        // Ensure From has the whatsapp: prefix
+        if (!from.startsWith('whatsapp:')) {
+            from = `whatsapp:${from}`;
+        }
+
+        // Build To in international format
+        let toPhone = to.replace('whatsapp:', '').replace(/^\+/, '').trim();
+
+        // Nigerian numbers: 07046835216 → 2347046835216 → +2347046835216
+        if (toPhone.startsWith('0') && toPhone.length === 11) {
+            toPhone = '234' + toPhone.substring(1);
+        } else if (toPhone.startsWith('234')) {
+            // already correct
+        } else if (!toPhone.startsWith('234') && toPhone.length === 10) {
+            toPhone = '234' + toPhone;
+        }
+
+        const toWhatsApp = `whatsapp:+${toPhone}`;
+
+        console.log(`📤 Twilio send: from=${from}, to=${toWhatsApp}`);
 
         const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
         const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
