@@ -136,7 +136,6 @@ router.patch('/:id/notification-prefs', auth, async (req, res) => {
 // ============================================================
 // GET DISTRIBUTOR EARNINGS - GET /api/distributors/:id/earnings
 // ============================================================
-const Order = require('../models/Order');
 const { cartonEquivalent } = require('../utils/deliveryFee');
 
 router.get('/:id/earnings', auth, async (req, res) => {
