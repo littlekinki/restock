@@ -119,4 +119,142 @@ router.get('/earnings', auth, adminOnly, async (req, res) => {
   }
 });
 
+// ============================================================
+// GET DISTRIBUTOR'S PRODUCTS - GET /api/admin/distributors/:id/products
+// ============================================================
+router.get('/distributors/:id/products', auth, adminOnly, async (req, res) => {
+  try {
+    const distributor = await Distributor.findById(req.params.id);
+    if (!distributor) {
+      return res.status(404).json({ success: false, error: 'Distributor not found' });
+    }
+
+    res.json({
+      success: true,
+      distributorName: distributor.businessName,
+      products: distributor.products || [],
+    });
+  } catch (error) {
+    console.error('Admin get distributor products error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// ADD PRODUCT TO DISTRIBUTOR 
+// ============================================================
+router.post('/distributors/:id/products', auth, adminOnly, async (req, res) => {
+  try {
+    const { name, category, price, unit, size, stock } = req.body;
+
+    if (!name || price === undefined || stock === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name, price, and stock are required',
+      });
+    }
+
+    const distributor = await Distributor.findById(req.params.id);
+    if (!distributor) {
+      return res.status(404).json({ success: false, error: 'Distributor not found' });
+    }
+
+    const newProduct = {
+      name: String(name).trim(),
+      category: category || 'Other',
+      price: Number(price) || 0,
+      unit: unit || 'carton',
+      size: size || '',
+      stock: Number(stock) || 0,
+    };
+
+    distributor.products = distributor.products || [];
+    distributor.products.push(newProduct);
+    await distributor.save();
+
+    console.log(`✅ Admin added product "${newProduct.name}" to ${distributor.businessName}`);
+
+    res.json({
+      success: true,
+      products: distributor.products,
+      message: 'Product added',
+    });
+  } catch (error) {
+    console.error('Admin add product error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// UPDATE PRODUCT - PUT /api/admin/distributors/:id/products/:index
+// ============================================================
+router.put('/distributors/:id/products/:index', auth, adminOnly, async (req, res) => {
+  try {
+    const index = parseInt(req.params.index);
+    const { name, category, price, unit, size, stock } = req.body;
+
+    const distributor = await Distributor.findById(req.params.id);
+    if (!distributor) {
+      return res.status(404).json({ success: false, error: 'Distributor not found' });
+    }
+
+    if (!distributor.products || !distributor.products[index]) {
+      return res.status(404).json({ success: false, error: 'Product index not found' });
+    }
+
+    distributor.products[index] = {
+      name: String(name || distributor.products[index].name).trim(),
+      category: category || distributor.products[index].category,
+      price: Number(price !== undefined ? price : distributor.products[index].price),
+      unit: unit || distributor.products[index].unit,
+      size: size !== undefined ? size : distributor.products[index].size,
+      stock: Number(stock !== undefined ? stock : distributor.products[index].stock),
+    };
+
+    await distributor.save();
+    console.log(`✅ Admin updated product #${index} for ${distributor.businessName}`);
+
+    res.json({
+      success: true,
+      products: distributor.products,
+      message: 'Product updated',
+    });
+  } catch (error) {
+    console.error('Admin update product error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// DELETE PRODUCT - DELETE /api/admin/distributors/:id/products/:index
+// ============================================================
+router.delete('/distributors/:id/products/:index', auth, adminOnly, async (req, res) => {
+  try {
+    const index = parseInt(req.params.index);
+
+    const distributor = await Distributor.findById(req.params.id);
+    if (!distributor) {
+      return res.status(404).json({ success: false, error: 'Distributor not found' });
+    }
+
+    if (!distributor.products || !distributor.products[index]) {
+      return res.status(404).json({ success: false, error: 'Product index not found' });
+    }
+
+    const removed = distributor.products.splice(index, 1)[0];
+    await distributor.save();
+
+    console.log(`✅ Admin deleted product "${removed.name}" from ${distributor.businessName}`);
+
+    res.json({
+      success: true,
+      products: distributor.products,
+      message: 'Product deleted',
+    });
+  } catch (error) {
+    console.error('Admin delete product error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
