@@ -2,15 +2,58 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const Rider = require('../models/Rider');
+const Order = require('../models/Order');
 
 // GET all riders
 router.get('/', auth, async (req, res) => {
-  try {
-    const riders = await Rider.find().sort({ createdAt: -1 });
-    res.json({ success: true, riders });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+    try {
+        const riders = await Rider.find().lean();
+
+        const riderIds = riders.map(r => r._id);
+        const allOrders = await Order.find({ riderId: { $in: riderIds } }).lean();
+
+        const byRider = {};
+        allOrders.forEach(o => {
+            const key = String(o.riderId);
+            if (!byRider[key]) byRider[key] = { active: [], recent: [], earnings: 0, completed: 0 };
+
+            if (o.status === 'picked_up' || o.status === 'out_for_delivery') {
+                byRider[key].active.push({
+                    _id: o._id,
+                    orderId: `#${o._id.toString().slice(-6).toUpperCase()}`,
+                    status: o.status,
+                    total: o.total || 0,
+                });
+            }
+
+            if (o.status === 'delivered') {
+                byRider[key].completed += 1;
+                byRider[key].earnings += o.deliveryFee || 0;
+            }
+
+            if (byRider[key].recent.length < 5) {
+                byRider[key].recent.push({
+                    _id: o._id,
+                    orderId: `#${o._id.toString().slice(-6).toUpperCase()}`,
+                    status: o.status,
+                    total: o.total || 0,
+                });
+            }
+        });
+
+        const enriched = riders.map(r => ({
+            ...r,
+            activeDeliveries: byRider[String(r._id)]?.active || [],
+            recentOrders: byRider[String(r._id)]?.recent || [],
+            completedCount: byRider[String(r._id)]?.completed || 0,
+            totalEarned: byRider[String(r._id)]?.earnings || 0,
+        }));
+
+        res.json({ success: true, riders: enriched });
+    } catch (error) {
+        console.error('Get riders error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 // GET nearby riders based on location

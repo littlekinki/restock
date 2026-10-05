@@ -2,15 +2,62 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const Distributor = require('../models/Distributor');
+const Order = require('../models/Order');
 
 // GET all distributors
 router.get('/', auth, async (req, res) => {
-  try {
-    const distributors = await Distributor.find().sort({ createdAt: -1 });
-    res.json({ success: true, distributors });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+    try {
+        const distributors = await Distributor.find().lean();
+
+        // Recent orders per distributor
+        const distIds = distributors.map(d => d._id);
+        const recentOrders = await Order.find({ distributorId: { $in: distIds } })
+            .sort({ createdAt: -1 })
+            .populate('shopId', 'businessName')
+            .lean();
+
+        const byDist = {};
+        recentOrders.forEach(o => {
+            const key = String(o.distributorId);
+            if (!byDist[key]) byDist[key] = [];
+            if (byDist[key].length < 5) byDist[key].push(o);
+        });
+
+        // Totals per distributor
+        const totalsByDist = {};
+        const allOrders = await Order.find({ distributorId: { $in: distIds } }).lean();
+        allOrders.forEach(o => {
+            const key = String(o.distributorId);
+            if (!totalsByDist[key]) totalsByDist[key] = { count: 0, revenue: 0, delivered: 0, unpaid: 0 };
+            totalsByDist[key].count += 1;
+            totalsByDist[key].revenue += o.total || 0;
+            if (o.status === 'delivered') totalsByDist[key].delivered += 1;
+            if (!o.paidToDistributorAt && o.status !== 'cancelled') {
+                totalsByDist[key].unpaid += o.total || 0;
+            }
+        });
+
+        const enriched = distributors.map(d => ({
+            ...d,
+            recentOrders: (byDist[String(d._id)] || []).map(o => ({
+                _id: o._id,
+                orderId: `#${o._id.toString().slice(-6).toUpperCase()}`,
+                status: o.status,
+                total: o.total || 0,
+                shopName: o.shopId?.businessName || 'Unknown',
+                createdAt: o.createdAt,
+            })),
+            totalOrders: totalsByDist[String(d._id)]?.count || 0,
+            totalRevenue: totalsByDist[String(d._id)]?.revenue || 0,
+            deliveredCount: totalsByDist[String(d._id)]?.delivered || 0,
+            unpaidAmount: totalsByDist[String(d._id)]?.unpaid || 0,
+        }));
+
+        res.json({ success: true, distributors: enriched });
+    } catch (error) {
+        console.error('Get distributors error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 // GET single distributor

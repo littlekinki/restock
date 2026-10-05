@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const Shop = require('../models/Shop');
+const Order = require('../models/Order');
 
 // ============================================================
 // GET ALL SHOPS 
@@ -9,23 +10,65 @@ const Shop = require('../models/Shop');
 router.get('/', auth, async (req, res) => {
     try {
         let shops;
-        
+
         // If user is a shop owner, only return their shop
         if (req.user.role === 'shop') {
             const shop = await Shop.findById(req.user.id);
             shops = shop ? [shop] : [];
         } else {
-            // Distributors and riders see all shops
-            shops = await Shop.find().sort({ createdAt: -1 });
+            // Distributors, riders, admins see all shops
+            shops = await Shop.find().sort({ createdAt: -1 }).lean();
         }
-        
-        res.json({ success: true, shops });
+
+        // Admin-only enrichment (skip for shop owners to save DB load)
+        if (req.user.role === 'shop') {
+            return res.json({ success: true, shops });
+        }
+
+        // Fetch all orders for these shops
+        const shopIds = shops.map(s => s._id);
+        const allOrders = await Order.find({ shopId: { $in: shopIds } })
+            .sort({ createdAt: -1 })
+            .populate('distributorId', 'businessName')
+            .lean();
+
+        // Group by shop
+        const byShop = {};
+        const totalsByShop = {};
+
+        allOrders.forEach(o => {
+            const key = String(o.shopId);
+
+            if (!byShop[key]) byShop[key] = [];
+            if (byShop[key].length < 5) {
+                byShop[key].push({
+                    _id: o._id,
+                    orderId: `#${o._id.toString().slice(-6).toUpperCase()}`,
+                    status: o.status,
+                    total: o.total || 0,
+                    distributorName: o.distributorId?.businessName || 'Unknown',
+                    createdAt: o.createdAt,
+                });
+            }
+
+            if (!totalsByShop[key]) totalsByShop[key] = { count: 0, spent: 0 };
+            totalsByShop[key].count += 1;
+            totalsByShop[key].spent += o.total || 0;
+        });
+
+        const enriched = shops.map(s => ({
+            ...s,
+            recentOrders: byShop[String(s._id)] || [],
+            totalOrders: totalsByShop[String(s._id)]?.count || 0,
+            totalSpent: totalsByShop[String(s._id)]?.spent || 0,
+        }));
+
+        res.json({ success: true, shops: enriched });
     } catch (error) {
         console.error('Get shops error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
-
 // GET single shop
 router.get('/:id', auth, async (req, res) => {
   try {
