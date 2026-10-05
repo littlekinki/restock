@@ -285,7 +285,7 @@ function showToast(message) {
 // ============================================================
 function showSection(section) {
     // Hide all sections
-    const sections = ['settingsSection', 'shopsSection', 'distributorsSection', 'ridersSection', 'ordersSection', 'requestsSection', 'earningsSection', 'notificationsSection'];
+    const sections = ['settingsSection', 'shopsSection', 'distributorsSection', 'ridersSection', 'ordersSection', 'requestsSection', 'earningsSection', 'notificationsSection', 'distProductsSection'];
     sections.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
@@ -329,6 +329,12 @@ function showSection(section) {
             const distSec = document.getElementById('distributorsSection');
             if (distSec) distSec.style.display = 'block';
             loadAllDistributors();
+            break;
+
+        case 'distProducts':
+            const dpSec = document.getElementById('distProductsSection');
+            if (dpSec) dpSec.style.display = 'block';
+            loadDistributorDropdown();
             break;
 
         case 'riders':
@@ -487,17 +493,45 @@ async function loadAllShops() {
                 return;
             }
 
-            document.getElementById('shopsList').innerHTML = shopsList.map(shop => `
-                <div class="user-card">
-                    <div class="user-info">
-                        <span class="user-name">🏪 ${shop.businessName}</span>
-                        <span class="user-phone">👤 ${shop.ownerName}</span>
-                        <span class="user-phone">📞 ${shop.phone}</span>
-                        <span class="user-address">📍 ${shop.address?.street || ''} ${shop.address?.city || ''}</span>
+            document.getElementById('shopsList').innerHTML = shopsList.map((shop, idx) => `
+                <div class="user-card expandable" onclick="toggleExpand('shop-${idx}')">
+                    <div class="user-card-header">
+                        <div class="user-info">
+                            <span class="user-name">🏪 ${shop.businessName}</span>
+                            <span class="user-phone">👤 ${shop.ownerName || ''}</span>
+                            <span class="user-phone">📞 ${shop.phone}</span>
+                            <span class="user-address">📍 ${shop.address?.street || ''} ${shop.address?.city || ''}</span>
+                        </div>
+                        <div class="user-meta">
+                            <span class="user-status ${shop.isActive ? 'active' : 'inactive'}">${shop.isActive ? 'Active' : 'Inactive'}</span>
+                            <span class="user-stat">🛒 ${shop.totalOrders || 0} orders</span>
+                            <span class="user-stat">💰 ₦${(shop.totalSpent || 0).toLocaleString()} spent</span>
+                            <span class="expand-toggle">▼</span>
+                        </div>
                     </div>
-                    <div class="user-meta">
-                        <span class="user-status ${shop.isActive ? 'active' : 'inactive'}">${shop.isActive ? 'Active' : 'Inactive'}</span>
-                        <span class="user-stat">📦 ${shop.totalOrders || 0} orders</span>
+                    <div class="user-card-body" id="shop-${idx}">
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <span class="summary-label">Total Orders</span>
+                                <span class="summary-value">${shop.totalOrders || 0}</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Total Spent</span>
+                                <span class="summary-value">₦${(shop.totalSpent || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <p class="summary-heading">🛒 Recent Orders</p>
+                        ${(shop.recentOrders && shop.recentOrders.length > 0) ? `
+                            <div class="mini-list">
+                                ${shop.recentOrders.map(o => `
+                                    <div class="mini-item">
+                                        <span><strong>${o.orderId}</strong> — ${o.distributorName}</span>
+                                        <span><span class="mini-status mini-status-${o.status}">${(o.status || '').toUpperCase()}</span> ₦${(o.total || 0).toLocaleString()}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<p class="mini-empty">No orders yet.</p>'}
                     </div>
                 </div>
             `).join('');
@@ -533,21 +567,70 @@ async function loadAllDistributors() {
                 return;
             }
 
-            document.getElementById('distributorsList').innerHTML = distributorsList.map(dist => `
-                <div class="user-card">
-                    <div class="user-info">
-                        <span class="user-name">📦 ${dist.businessName}</span>
-                        <span class="user-phone">👤 ${dist.ownerName}</span>
-                        <span class="user-phone">📞 ${dist.phone}</span>
-                        <span class="user-address">📍 ${dist.address?.street || ''} ${dist.address?.city || ''}</span>
-                    </div>
-                    <div class="user-meta">
-                        <span class="user-status ${dist.isActive ? 'active' : 'inactive'}">${dist.isActive ? 'Active' : 'Inactive'}</span>
-                        <span class="user-stat">📦 ${dist.products?.length || 0} products</span>
-                        <span class="user-stat">🛒 ${dist.totalOrders || 0} orders</span>
-                    </div>
-                </div>
-            `).join('');
+            document.getElementById('distributorsList').innerHTML = distributorsList.map((dist, idx) => `
+               <div class="user-card expandable" onclick="toggleExpand('dist-${idx}')">
+                   <div class="user-card-header">
+                       <div class="user-info">
+                           <span class="user-name">📦 ${dist.businessName}</span>
+                           <span class="user-phone">👤 ${dist.ownerName || ''}</span>
+                           <span class="user-phone">📞 ${dist.phone}</span>
+                           <span class="user-address">📍 ${dist.address?.street || ''} ${dist.address?.city || ''}</span>
+                       </div>
+                       <div class="user-meta">
+                           <span class="user-status ${dist.isActive ? 'active' : 'inactive'}">${dist.isActive ? 'Active' : 'Inactive'}</span>
+                           <span class="user-stat">📦 ${dist.products?.length || 0} products</span>
+                           <span class="user-stat">🛒 ${dist.totalOrders || 0} orders</span>
+                           <span class="user-stat">💰 ₦${(dist.totalRevenue || 0).toLocaleString()}</span>
+                           <span class="expand-toggle">▼</span>
+                       </div>
+                   </div>
+                   <div class="user-card-body" id="dist-${idx}">
+                       <div class="summary-grid">
+                           <div class="summary-item">
+                               <span class="summary-label">Total Orders</span>
+                               <span class="summary-value">${dist.totalOrders || 0}</span>
+                           </div>
+                           <div class="summary-item">
+                               <span class="summary-label">Total Revenue</span>
+                               <span class="summary-value">₦${(dist.totalRevenue || 0).toLocaleString()}</span>
+                           </div>
+                           <div class="summary-item">
+                               <span class="summary-label">Delivered</span>
+                               <span class="summary-value">${dist.deliveredCount || 0}</span>
+                           </div>
+                           <div class="summary-item summary-warn">
+                               <span class="summary-label">Unpaid</span>
+                               <span class="summary-value">₦${(dist.unpaidAmount || 0).toLocaleString()}</span>
+                           </div>
+                       </div>
+
+                       <p class="summary-heading">📦 Products (${dist.products?.length || 0})</p>
+                       ${(dist.products && dist.products.length > 0) ? `
+                           <div class="mini-list">
+                               ${dist.products.slice(0, 5).map(p => `
+                                   <div class="mini-item">
+                                       <span>${p.name}</span>
+                                       <span>₦${(p.price || 0).toLocaleString()} • ${p.stock || 0} in stock</span>
+                                   </div>
+                               `).join('')}
+                               ${dist.products.length > 5 ? `<p class="mini-more">...and ${dist.products.length - 5} more</p>` : ''}
+                           </div>
+                       ` : '<p class="mini-empty">No products yet.</p>'}
+
+                       <p class="summary-heading">🛒 Recent Orders</p>
+                       ${(dist.recentOrders && dist.recentOrders.length > 0) ? `
+                           <div class="mini-list">
+                               ${dist.recentOrders.map(o => `
+                                   <div class="mini-item">
+                                       <span><strong>${o.orderId}</strong> — ${o.shopName}</span>
+                                       <span><span class="mini-status mini-status-${o.status}">${(o.status || '').toUpperCase()}</span> ₦${(o.total || 0).toLocaleString()}</span>
+                                   </div>
+                               `).join('')}
+                           </div>
+                       ` : '<p class="mini-empty">No orders yet.</p>'}
+                   </div>
+               </div>
+           `).join('');
         }
     } catch (error) {
         console.error('Error loading distributors:', error);
@@ -580,18 +663,61 @@ async function loadAllRiders() {
                 return;
             }
 
-            document.getElementById('ridersList').innerHTML = ridersList.map(rider => `
-                <div class="user-card">
-                    <div class="user-info">
-                        <span class="user-name">🏍️ ${rider.fullName}</span>
-                        <span class="user-phone">📞 ${rider.phone}</span>
-                        <span class="user-address">🚗 ${rider.vehicleType || 'motorcycle'} ${rider.vehiclePlate ? '• ' + rider.vehiclePlate : ''}</span>
-                        <span class="user-address">📍 ${rider.currentLocation?.city || 'Unknown'}</span>
+            document.getElementById('ridersList').innerHTML = ridersList.map((rider, idx) => `
+                <div class="user-card expandable" onclick="toggleExpand('rider-${idx}')">
+                    <div class="user-card-header">
+                        <div class="user-info">
+                            <span class="user-name">🏍️ ${rider.fullName}</span>
+                            <span class="user-phone">📞 ${rider.phone}</span>
+                            <span class="user-address">🚗 ${rider.vehicleType || 'motorcycle'} ${rider.vehiclePlate ? '• ' + rider.vehiclePlate : ''}</span>
+                            <span class="user-address">📍 ${rider.currentLocation?.city || 'Unknown'}</span>
+                        </div>
+                        <div class="user-meta">
+                            <span class="user-status ${rider.isActive ? 'active' : 'inactive'}">${rider.status || 'available'}</span>
+                            <span class="user-stat">📦 ${rider.totalDeliveries || 0} deliveries</span>
+                            <span class="user-stat">💰 ₦${(rider.totalEarned || 0).toLocaleString()}</span>
+                            <span class="expand-toggle">▼</span>
+                        </div>
                     </div>
-                    <div class="user-meta">
-                        <span class="user-status ${rider.isActive ? 'active' : 'inactive'}">${rider.status || 'available'}</span>
-                        <span class="user-stat">📦 ${rider.totalDeliveries || 0} deliveries</span>
-                        <span class="user-stat">💰 ₦${(rider.earnings || 0).toLocaleString()}</span>
+                    <div class="user-card-body" id="rider-${idx}">
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <span class="summary-label">Completed</span>
+                                <span class="summary-value">${rider.completedCount || 0}</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Active Now</span>
+                                <span class="summary-value">${(rider.activeDeliveries || []).length}</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Total Earned</span>
+                                <span class="summary-value">₦${(rider.totalEarned || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <p class="summary-heading">🚚 Active Deliveries</p>
+                        ${(rider.activeDeliveries && rider.activeDeliveries.length > 0) ? `
+                            <div class="mini-list">
+                                ${rider.activeDeliveries.map(o => `
+                                    <div class="mini-item">
+                                        <span><strong>${o.orderId}</strong></span>
+                                        <span><span class="mini-status mini-status-${o.status}">${(o.status || '').toUpperCase()}</span> ₦${(o.total || 0).toLocaleString()}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<p class="mini-empty">No active deliveries.</p>'}
+
+                        <p class="summary-heading">📦 Recent Orders</p>
+                        ${(rider.recentOrders && rider.recentOrders.length > 0) ? `
+                            <div class="mini-list">
+                                ${rider.recentOrders.map(o => `
+                                    <div class="mini-item">
+                                        <span><strong>${o.orderId}</strong></span>
+                                        <span><span class="mini-status mini-status-${o.status}">${(o.status || '').toUpperCase()}</span> ₦${(o.total || 0).toLocaleString()}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<p class="mini-empty">No orders yet.</p>'}
                     </div>
                 </div>
             `).join('');
@@ -1011,6 +1137,239 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startNotifPolling);
 } else {
     startNotifPolling();
+}
+
+// ============================================================
+// MANAGE DISTRIBUTOR PRODUCTS
+// ============================================================
+let currentDistributorId = null;
+
+async function loadDistributorDropdown() {
+    const select = document.getElementById('distProductsSelect');
+    if (!select) return;
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/distributors`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        if (!data.success) return;
+
+        select.innerHTML = '<option value="">-- Choose a distributor --</option>';
+        data.distributors.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d._id;
+            opt.textContent = `${d.businessName} (${d.phone})`;
+            select.appendChild(opt);
+        });
+    } catch (e) {
+        console.error('Load distributors error:', e);
+    }
+}
+
+async function loadDistributorProducts() {
+    const select = document.getElementById('distProductsSelect');
+    const listWrap = document.getElementById('distProductsList');
+    const formWrap = document.getElementById('addProductFormWrap');
+
+    const id = select.value;
+    currentDistributorId = id;
+
+    if (!id) {
+        listWrap.innerHTML = '<p style="color: var(--gray-500); font-size: 14px;">Select a distributor to see products.</p>';
+        formWrap.style.display = 'none';
+        return;
+    }
+
+    formWrap.style.display = 'block';
+    listWrap.innerHTML = '<p style="color: var(--gray-500);">Loading products...</p>';
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/admin/distributors/${id}/products`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+            listWrap.innerHTML = `<p style="color: var(--danger);">${data.error || 'Failed to load'}</p>`;
+            return;
+        }
+
+        renderDistributorProducts(data.products || []);
+    } catch (e) {
+        console.error('Load products error:', e);
+        listWrap.innerHTML = '<p style="color: var(--danger);">Network error</p>';
+    }
+}
+
+function renderDistributorProducts(products) {
+    const listWrap = document.getElementById('distProductsList');
+
+    if (!products || products.length === 0) {
+        listWrap.innerHTML = '<p style="color: var(--gray-500); font-size: 14px;">No products yet. Add one above.</p>';
+        return;
+    }
+
+    const rows = products.map((p, i) => `
+        <tr>
+            <td><strong>${p.name}</strong><br><span style="font-size: 12px; color: var(--gray-500);">${p.category || ''} ${p.size ? '• ' + p.size : ''}</span></td>
+            <td>₦${(p.price || 0).toLocaleString()}</td>
+            <td>${p.unit || ''}</td>
+            <td>${p.stock || 0}</td>
+            <td style="text-align: right;">
+                <button class="btn btn-outline" style="padding: 6px 10px; font-size: 12px; margin-right: 4px;"
+                    onclick="adminEditProduct(${i})">✏️ Edit</button>
+                <button class="btn" style="background: #E17055; color: white; padding: 6px 10px; font-size: 12px;"
+                    onclick="adminDeleteProduct(${i})">🗑️</button>
+            </td>
+        </tr>
+    `).join('');
+
+    listWrap.innerHTML = `
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--gray-200); text-align: left;">
+                    <th style="padding: 8px;">Product</th>
+                    <th style="padding: 8px;">Price</th>
+                    <th style="padding: 8px;">Unit</th>
+                    <th style="padding: 8px;">Stock</th>
+                    <th style="padding: 8px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+    `;
+}
+
+async function adminAddProduct() {
+    if (!currentDistributorId) {
+        showToast('⚠️ Select a distributor first');
+        return;
+    }
+
+    const name = document.getElementById('apName').value.trim();
+    const category = document.getElementById('apCategory').value;
+    const price = document.getElementById('apPrice').value;
+    const unit = document.getElementById('apUnit').value;
+    const size = document.getElementById('apSize').value.trim();
+    const stock = document.getElementById('apStock').value;
+
+    if (!name || !price || stock === '') {
+        showToast('⚠️ Fill in name, price, and stock');
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/admin/distributors/${currentDistributorId}/products`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name, category, price, unit, size, stock })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast('✅ Product added');
+            // clear form
+            document.getElementById('apName').value = '';
+            document.getElementById('apPrice').value = '';
+            document.getElementById('apSize').value = '';
+            document.getElementById('apStock').value = '';
+            renderDistributorProducts(data.products || []);
+        } else {
+            showToast('❌ ' + (data.error || 'Failed'));
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('❌ Network error');
+    }
+}
+
+async function adminDeleteProduct(index) {
+    if (!currentDistributorId) return;
+    if (!confirm('Delete this product?')) return;
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/admin/distributors/${currentDistributorId}/products/${index}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('✅ Deleted');
+            renderDistributorProducts(data.products || []);
+        } else {
+            showToast('❌ ' + (data.error || 'Failed'));
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('❌ Network error');
+    }
+}
+
+async function adminEditProduct(index) {
+    if (!currentDistributorId) return;
+
+    const newName = prompt('Product name:');
+    if (newName === null) return;
+
+    const newPrice = prompt('Price (₦):');
+    if (newPrice === null) return;
+
+    const newStock = prompt('Stock:');
+    if (newStock === null) return;
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/admin/distributors/${currentDistributorId}/products/${index}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name: newName, price: newPrice, stock: newStock })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('✅ Updated');
+            renderDistributorProducts(data.products || []);
+        } else {
+            showToast('❌ ' + (data.error || 'Failed'));
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('❌ Network error');
+    }
+}
+
+// ============================================================
+// EXPAND/COLLAPSE CARDS
+// ============================================================
+function toggleExpand(id) {
+    const body = document.getElementById(id);
+    if (!body) return;
+    const card = body.closest('.user-card');
+    const toggle = card?.querySelector('.expand-toggle');
+    const isOpen = body.classList.contains('open');
+
+    if (isOpen) {
+        body.classList.remove('open');
+        if (toggle) toggle.textContent = '▼';
+        card.classList.remove('expanded');
+    } else {
+        body.classList.add('open');
+        if (toggle) toggle.textContent = '▲';
+        card.classList.add('expanded');
+    }
 }
 
 // ============================================================
