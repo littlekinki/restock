@@ -1440,6 +1440,16 @@ export default function ShopScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.orderId}>#{order._id.slice(-6).toUpperCase()}</Text>
                 <Text style={styles.orderItemsText}>{itemsSummary(order)}</Text>
+                
+                {/* 🚨 NEW: DELIVERY PIN FOR THE SHOP OWNER */}
+                {(order.status === 'picked_up' || order.status === 'out_for_delivery') && order.deliveryPIN ? (
+                  
+                  <View style={styles.pinDisplayBox}>
+                    <Text style={styles.pinLabel}>🔑 Give this PIN to Rider:</Text>
+                    <Text style={styles.pinCode}>{order.deliveryPIN}</Text>
+                  </View>
+                ) : null}
+
                 <View style={styles.orderStatusRow}>
                   <View style={[styles.statusPill, { backgroundColor: statusBg(order.status) }]}>
                     <Text style={[styles.statusPillText, { color: statusColor(order.status) }]}>
@@ -1474,6 +1484,7 @@ export default function ShopScreen() {
               </View>
             </View>
           ))
+        
         )}
       </>
     );
@@ -3286,5 +3297,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.secondary,
     fontWeight: '700',
+  },
+    pinDisplayBox: {
+    backgroundColor: '#E8F5E9',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#4DBE18',
+    alignItems: 'center',
+  },
+  pinLabel: {
+    fontSize: 12,
+    color: '#1B5E20',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  pinCode: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#1B5E20',
+    letterSpacing: 4,
   },
 });

@@ -123,7 +123,13 @@ router.post('/register', async (req, res) => {
                 user = new Rider({
                     fullName: ownerName,
                     phone: normalizedPhone,
-                    password: hashedPassword
+                    password: hashedPassword,
+                    vehicleType: address?.vehicleType || 'motorcycle',
+                    vehiclePlate: address?.vehiclePlate || '',
+                    currentLocation: {
+                        city: address?.city || '',
+                        state: address?.state || ''
+                    }
                 });
                 break;
             default:

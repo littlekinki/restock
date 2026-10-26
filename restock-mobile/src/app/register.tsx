@@ -27,9 +27,11 @@ export default function RegisterScreen() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [vehicleType, setVehicleType] = useState('motorcycle');
+  const [vehiclePlate, setVehiclePlate] = useState('');
 
   const handleRegister = async () => {
-    if (!businessName || !ownerName || !phone || !password) {
+    if ((role !== 'rider' && !businessName) || !ownerName || !phone || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
@@ -41,14 +43,16 @@ export default function RegisterScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           role,
-          businessName,
+          businessName: role === 'rider' ? 'N/A' : businessName,
           ownerName,
           phone,
           password,
           address: {
-            street: address,
-            city: city,
-            state: state
+            street: role === 'rider' ? '' : address, 
+            city: city, 
+            state: state,
+            vehicleType: role === 'rider' ? vehicleType : undefined,
+            vehiclePlate: role === 'rider' ? vehiclePlate : undefined
           }
         }),
       });
@@ -104,13 +108,15 @@ export default function RegisterScreen() {
               ))}
             </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Business Name"
-              placeholderTextColor="#ADB5BD"
-              value={businessName}
-              onChangeText={setBusinessName}
-            />
+            {role !== 'rider' && (
+              <TextInput
+                style={styles.input}
+                placeholder="Business Name"
+                placeholderTextColor="#ADB5BD"
+                value={businessName}
+                onChangeText={setBusinessName}
+              />
+            )}
 
             <TextInput
               style={styles.input}
@@ -129,17 +135,21 @@ export default function RegisterScreen() {
               keyboardType="phone-pad"
             />
 
-            <TextInput
-              style={styles.input}
-              placeholder="Shop Address (Street, Landmark)"
-              placeholderTextColor="#ADB5BD"
-              value={address}
-              onChangeText={setAddress}
-            />
+            
+            {role !== 'rider' && (
+              <TextInput
+                style={styles.input}
+                placeholder="Shop Address (Street, Landmark)"
+                placeholderTextColor="#ADB5BD"
+                value={address}
+                onChangeText={setAddress}
+              />
+            )}
 
+          
             <TextInput
               style={styles.input}
-              placeholder="City"
+              placeholder={role === 'rider' ? "City (e.g. Lagos)" : "City"}
               placeholderTextColor="#ADB5BD"
               value={city}
               onChangeText={setCity}
@@ -152,6 +162,33 @@ export default function RegisterScreen() {
               value={state}
               onChangeText={setState}
             />
+
+          
+            {role === 'rider' && (
+              <>
+                <View style={styles.chipRow}>
+                  {['motorcycle', 'tricycle', 'bicycle', 'car', 'van'].map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[styles.chip, vehicleType === type && styles.chipActive]}
+                      onPress={() => setVehicleType(type)}
+                    >
+                      <Text style={[styles.chipText, vehicleType === type && styles.chipTextActive]}>
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Vehicle Plate Number (e.g. LAG-123-AB)"
+                  placeholderTextColor="#ADB5BD"
+                  value={vehiclePlate}
+                  onChangeText={setVehiclePlate}
+                />
+              </>
+            )}
 
             {/* ✅ PASSWORD WITH SHOW/HIDE */}
             <View style={styles.passwordContainer}>

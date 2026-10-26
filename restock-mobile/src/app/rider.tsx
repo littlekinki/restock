@@ -74,8 +74,18 @@ export default function RiderScreen() {
   useEffect(() => {
     loadUser();
     loadDeliveries();
-    startLocationUpdates();
     loadUnreadCount();
+
+    // Force the location permission prompt immediately on load
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      console.log('Location permission status:', status);
+      
+      // Only start tracking if permission is granted
+      if (status === 'granted') {
+        startLocationUpdates();
+      }
+    })();
 
     const interval = setInterval(loadUnreadCount, 30000);
     return () => clearInterval(interval);
@@ -119,8 +129,17 @@ export default function RiderScreen() {
   // ============================================================
   const updateLocation = async () => {
     try {
+      // 1. Check if permission is granted
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status !== 'granted') {
+        console.log('Location permission denied by rider');
+        return;
+      }
+
       const location = await Location.getCurrentPositionAsync({});
       const token = await AsyncStorage.getItem('token');
+      
       await fetch(`${API_URL}/riders/${user?.id}/location`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
