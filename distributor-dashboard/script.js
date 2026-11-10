@@ -736,13 +736,28 @@ async function saveProduct(event) {
     const unit = document.getElementById('productUnit').value;
     const size = document.getElementById('productSize').value;
     const stock = parseInt(document.getElementById('productStock').value);
+    const imageFile = document.getElementById('productImage').files[0];
 
     if (!name || !price || !stock) {
         showToast('⚠️ Please fill in all required fields');
         return;
     }
 
+    const getBase64 = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+    };
+
     try {
+        let base64Image = null;
+        if (imageFile) {
+            base64Image = await getBase64(imageFile);
+        }
+
         const token = localStorage.getItem('token');
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         
@@ -764,7 +779,8 @@ async function saveProduct(event) {
             price: price,
             unit: unit,
             size: size,
-            stock: stock
+            stock: stock,
+            image: base64Image
         };
 
         const products = [...(distributor.products || []), newProduct];
