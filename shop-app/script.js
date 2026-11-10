@@ -365,9 +365,12 @@ function renderResults(results, term) {
                     
                     return `
                         <div class="product-item">
-                            <div class="product-info">
-                                <span class="product-name">${product.name}${sizeDisplay}${unitDisplay}</span>
-                                <span class="product-stock">${stock} in stock</span>
+                            <div class="product-info" style="display: flex; align-items: center; gap: 12px;">
+                                ${product.image ? `<img src="${product.image}" style="width: 50px; height: 50px; border-radius: 8px; object-fit: cover;" />` : '<div style="width: 50px; height: 50px; border-radius: 8px; background: #E9ECEF; display: flex; align-items: center; justify-content: center;">📦</div>'}
+                                <div>
+                                    <span class="product-name">${product.name}${sizeDisplay}${unitDisplay}</span>
+                                    <span class="product-stock">${stock} in stock</span>
+                                </div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
                                 <span class="product-price">₦${product.price?.toLocaleString() || 0}</span>

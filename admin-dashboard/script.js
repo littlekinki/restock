@@ -1258,13 +1258,29 @@ async function adminAddProduct() {
     const unit = document.getElementById('apUnit').value;
     const size = document.getElementById('apSize').value.trim();
     const stock = document.getElementById('apStock').value;
+    const imageFile = document.getElementById('apImage').files[0];
 
     if (!name || !price || stock === '') {
         showToast('⚠️ Fill in name, price, and stock');
         return;
     }
 
+    
+    const getBase64 = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+    };
+
     try {
+        let base64Image = null;
+        if (imageFile) {
+            base64Image = await getBase64(imageFile);
+        }
+
         const token = localStorage.getItem('token');
         const res = await fetch(`${API_URL}/admin/distributors/${currentDistributorId}/products`, {
             method: 'POST',
@@ -1272,7 +1288,15 @@ async function adminAddProduct() {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ name, category, price, unit, size, stock })
+            body: JSON.stringify({ 
+                name, 
+                category, 
+                price, 
+                unit, 
+                size, 
+                stock,
+                image: base64Image 
+            })
         });
         const data = await res.json();
 
@@ -1283,6 +1307,7 @@ async function adminAddProduct() {
             document.getElementById('apPrice').value = '';
             document.getElementById('apSize').value = '';
             document.getElementById('apStock').value = '';
+            document.getElementById('apImage').value = ''; // Clear image input
             renderDistributorProducts(data.products || []);
         } else {
             showToast('❌ ' + (data.error || 'Failed'));

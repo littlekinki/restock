@@ -166,6 +166,7 @@ router.post('/distributors/:id/products', auth, adminOnly, async (req, res) => {
       unit: unit || 'carton',
       size: size || '',
       stock: Number(stock) || 0,
+      image: req.body.image || null,
     };
 
     distributor.products = distributor.products || [];
