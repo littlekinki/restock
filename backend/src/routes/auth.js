@@ -29,9 +29,28 @@ function normalizePhone(phone) {
 // ============================================================
 router.post('/register', async (req, res) => {
     try {
-        const { role, businessName, ownerName, phone, password, address } = req.body;
+        const { role, businessName, ownerName, phone, password, address, otp } = req.body;
+
+        if (!otp) {
+            return res.status(400).json({ success: false, error: 'Verification code is required' });
+        }
 
         const normalizedPhone = normalizePhone(phone);
+
+        const validOtp = await PasswordReset.findOne({
+            phone: normalizedPhone,
+            otp: otp,
+            used: false,
+            expiresAt: { $gt: new Date() }
+        });
+
+        if (!validOtp) {
+            return res.status(400).json({ success: false, error: 'Invalid or expired verification code' });
+        }
+
+        // Mark OTP as used
+        validOtp.used = true;
+        await validOtp.save();
 
         // Validate required fields
         if (!role || !phone || !password) {
@@ -175,6 +194,52 @@ router.post('/register', async (req, res) => {
             success: false, 
             error: error.message || 'Registration failed' 
         });
+    }
+});
+
+// ============================================================
+// SEND REGISTRATION OTP
+// POST /api/auth/send-register-otp
+// ============================================================
+router.post('/send-register-otp', async (req, res) => {
+    try {
+        const { phone } = req.body;
+        const normalizedPhone = normalizePhone(phone); // Use your existing normalizer
+
+        if (!normalizedPhone || normalizedPhone.length < 10) {
+            return res.status(400).json({ success: false, error: 'Invalid phone number' });
+        }
+
+        // Check if phone is already registered
+        const existingShop = await Shop.findOne({ phone: normalizedPhone });
+        const existingDist = await Distributor.findOne({ phone: normalizedPhone });
+        const existingRider = await Rider.findOne({ phone: normalizedPhone });
+        
+        if (existingShop || existingDist || existingRider) {
+            return res.status(400).json({ success: false, error: 'Phone number already registered' });
+        }
+
+        // Generate 6-digit OTP
+        const otp = String(Math.floor(100000 + Math.random() * 900000));
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+        // Save to PasswordReset model (acts as a generic OTP store)
+        await PasswordReset.updateMany({ phone: normalizedPhone, used: false }, { $set: { used: true } });
+        await PasswordReset.create({
+            phone: normalizedPhone,
+            role: 'shop', // Just a placeholder, role doesn't matter for registration OTP
+            otp,
+            expiresAt,
+            used: false,
+        });
+
+        // Send SMS
+        await sendOTPSMS(normalizedPhone, otp);
+        
+        res.json({ success: true, message: 'Verification code sent' });
+    } catch (error) {
+        console.error('Send register OTP error:', error);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 

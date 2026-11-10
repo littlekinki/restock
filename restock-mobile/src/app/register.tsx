@@ -29,6 +29,36 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [vehicleType, setVehicleType] = useState('motorcycle');
   const [vehiclePlate, setVehiclePlate] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+
+
+  const handleSendOTP = async () => {
+    if (!phone) {
+      Alert.alert('Error', 'Please enter your phone number first');
+      return;
+    }
+    setSendingOtp(true);
+    try {
+      const response = await fetch(`${API_URL}/auth/send-register-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('📱 Code Sent', 'Please check your SMS for the 6-digit code.');
+        setOtpSent(true);
+      } else {
+        Alert.alert('Error', data.error || 'Failed to send code');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Network error. Try again.');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
 
   const handleRegister = async () => {
     if ((role !== 'rider' && !businessName) || !ownerName || !phone || !password) {
@@ -47,6 +77,7 @@ export default function RegisterScreen() {
           ownerName,
           phone,
           password,
+          otp,
           address: {
             street: role === 'rider' ? '' : address, 
             city: city, 
@@ -134,6 +165,26 @@ export default function RegisterScreen() {
               onChangeText={setPhone}
               keyboardType="phone-pad"
             />
+
+            {!otpSent ? (
+              <TouchableOpacity 
+                style={[styles.registerButton, { marginTop: 0, marginBottom: 16, backgroundColor: '#4DBE18' }]} 
+                onPress={handleSendOTP}
+                disabled={sendingOtp}
+              >
+                {sendingOtp ? <ActivityIndicator color="white" /> : <Text style={styles.registerButtonText}>📱 Send Verification Code</Text>}
+              </TouchableOpacity>
+            ) : (
+              <TextInput
+                style={[styles.input, { borderColor: '#4DBE18', borderWidth: 2 }]}
+                placeholder="Enter 6-digit Code"
+                placeholderTextColor="#ADB5BD"
+                value={otp}
+                onChangeText={setOtp}
+                keyboardType="numeric"
+                maxLength={6}
+              />
+            )}
 
             
             {role !== 'rider' && (

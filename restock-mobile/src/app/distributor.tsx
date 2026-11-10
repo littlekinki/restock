@@ -12,6 +12,7 @@ import {
   TextInput,
   Modal,
   Switch,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -58,6 +59,7 @@ export default function DistributorScreen() {
     unit: 'carton',
     size: '',
     stock: '',
+    image: null,
   });
 
   // Chat state
@@ -559,7 +561,7 @@ export default function DistributorScreen() {
     }
   };
 
-    // ============================================================
+  // ============================================================
   // NOTIFICATIONS
   // ============================================================
   const loadNotifications = async () => {
@@ -666,6 +668,29 @@ export default function DistributorScreen() {
     return new Date(dateStr).toLocaleDateString();
   };
 
+  const pickProductImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (permissionResult.granted === false) {
+      Alert.alert('Permission required', 'You need to allow access to your photos to upload an image.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1], // Square image for products
+      quality: 0.5, // Compress to save database space
+      base64: true, // Convert to Base64 string
+    });
+
+    if (!result.canceled) {
+      // Save the base64 string to state
+      const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      setNewProduct({ ...newProduct, image: base64Image });
+    }
+  };
+
   // ============================================================
   // SAVE NEW PRODUCT
   // ============================================================
@@ -700,6 +725,7 @@ export default function DistributorScreen() {
         unit: unit,
         size: size,
         stock: parseInt(stock),
+        image: newProduct.image || null,
       };
 
       const updatedProducts = [...(distributor.products || []), productToAdd];
@@ -717,7 +743,7 @@ export default function DistributorScreen() {
       if (data.success) {
         Alert.alert('✅ Success', 'Product added successfully!');
         setShowProductForm(false);
-        setNewProduct({ name: '', category: 'Noodles', price: '', unit: 'carton', size: '', stock: '' });
+        setNewProduct({ name: '', category: 'Noodles', price: '', unit: 'carton', size: '', stock: '', image: null });
         loadProducts();
       } else {
         Alert.alert('❌ Error', data.error || 'Failed to add product');
@@ -921,6 +947,30 @@ export default function DistributorScreen() {
           value={newProduct.name}
           onChangeText={(text) => setNewProduct({ ...newProduct, name: text })}
         />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.formLabel}>Product Image</Text>
+        <TouchableOpacity 
+          style={{ 
+            backgroundColor: '#E9ECEF', 
+            height: 150, 
+            borderRadius: 12, 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            overflow: 'hidden' 
+          }} 
+          onPress={pickProductImage}
+        >
+          {newProduct.image ? (
+            <Image source={{ uri: newProduct.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          ) : (
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ fontSize: 32 }}>📷</Text>
+              <Text style={{ color: '#6C757D', marginTop: 8 }}>Tap to upload image</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       <View style={styles.formGroup}>

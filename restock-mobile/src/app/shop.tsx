@@ -1609,6 +1609,9 @@ export default function ShopScreen() {
                 const unitDisplay = product.unit ? ` / ${product.unit}` : '';
                 return (
                   <View key={idx} style={styles.productRow}>
+                    {product.image && (
+                      <Image source={{ uri: product.image }} style={{ width: 50, height: 50, borderRadius: 8, marginRight: 12 }} />
+                    )}
                     <View style={{ flex: 1 }}>
                       <Text style={styles.productName}>
                         {product.name}{sizeDisplay}{unitDisplay}
