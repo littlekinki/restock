@@ -67,19 +67,21 @@ function computeDeliveryFee(items, shop, distributor) {
   const cartons = cartonEquivalent(items);
   const surcharge = volumeSurchargeFor(cartons);
 
-  const shopLat = shop?.address?.lat;
-  const shopLng = shop?.address?.lng;
-  const distLat = distributor?.address?.lat;
-  const distLng = distributor?.address?.lng;
+  // ✅ Force them to be numbers to prevent any string-math errors
+  const shopLat = parseFloat(shop?.address?.lat);
+  const shopLng = parseFloat(shop?.address?.lng);
+  const distLat = parseFloat(distributor?.address?.lat);
+  const distLng = parseFloat(distributor?.address?.lng);
 
   let distanceKm = null;
   let baseFee;
 
+  // ✅ Check if we have valid, non-zero numbers
   const haveCoords =
-    Number.isFinite(shopLat) && Number.isFinite(shopLng) &&
-    Number.isFinite(distLat) && Number.isFinite(distLng) &&
-    !(shopLat === 0 && shopLng === 0) &&
-    !(distLat === 0 && distLng === 0);
+    !isNaN(shopLat) && !isNaN(shopLng) &&
+    !isNaN(distLat) && !isNaN(distLng) &&
+    shopLat !== 0 && shopLng !== 0 &&
+    distLat !== 0 && distLng !== 0;
 
   if (haveCoords) {
     distanceKm = haversineKm(shopLat, shopLng, distLat, distLng);
