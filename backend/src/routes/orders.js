@@ -51,6 +51,8 @@ router.post('/', auth, async (req, res) => {
 
         // ✅ Compute delivery fee
         const shop = await Shop.findById(shopId);
+        console.log('🔍 SHOP COORDS:', shop?.address?.lat, shop?.address?.lng);
+        console.log('🔍 DIST COORDS:', distributor?.address?.lat, distributor?.address?.lng);
         const feeInfo = computeDeliveryFee(items, shop, distributor);
 
         console.log('🚚 Delivery fee breakdown:', JSON.stringify(feeInfo, null, 2));
