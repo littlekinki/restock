@@ -61,6 +61,8 @@ export default function ShopScreen() {
   const [shopResults, setShopResults] = useState([]);
   const [shopSearched, setShopSearched] = useState(false);
   const [cart, setCart] = useState([]);
+  const [realDeliveryFee, setRealDeliveryFee] = useState(0);
+  const [loadingFee, setLoadingFee] = useState(false);
   const [showCartModal, setShowCartModal] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -111,6 +113,15 @@ export default function ShopScreen() {
     const userData = await AsyncStorage.getItem('user');
     if (userData) setUser(JSON.parse(userData));
   };
+
+  // ✅ Auto-update delivery fee whenever the cart changes
+  useEffect(() => {
+    if (cart.length > 0) {
+      fetchDeliveryFee();
+    } else {
+      setRealDeliveryFee(0);
+    }
+  }, [cart]);
 
   // ============================================================
   // LOAD PRODUCTS
@@ -190,6 +201,53 @@ export default function ShopScreen() {
       }
     } catch (error) {
       console.error('Error loading orders:', error);
+    }
+  };
+
+  const fetchDeliveryFee = async () => {
+    if (cart.length === 0) {
+      setRealDeliveryFee(0);
+      return;
+    }
+
+    // Group cart items by distributor (use the first one for estimation)
+    const primaryDistributorId = cart[0].distributorId;
+    
+    // Format items for the backend
+    const formattedItems = cart.map(item => ({
+      productName: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      total: item.price * item.quantity,
+      unit: item.unit // Important for carton surcharge
+    }));
+
+    setLoadingFee(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const currentUser = user;
+
+      const response = await fetch(`${API_URL}/orders/estimate-fee`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          shopId: currentUser.id,
+          distributorId: primaryDistributorId,
+          items: formattedItems
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setRealDeliveryFee(data.deliveryFee);
+        console.log('🚚 Real Delivery Fee:', data.deliveryFee, 'Distance:', data.distanceKm);
+      }
+    } catch (error) {
+      console.error('Error fetching delivery fee:', error);
+    } finally {
+      setLoadingFee(false);
     }
   };
 
@@ -1517,7 +1575,7 @@ export default function ShopScreen() {
         {getCartCount() > 0 && (
           <TouchableOpacity
             style={styles.viewCartButton}
-            onPress={() => setShowCartModal(true)}
+            onPress={() => setShowCartModal(true)}>
           >
             <Text style={styles.viewCartButtonText}>
               🛒 View Cart ({getCartCount()} {getCartCount() === 1 ? 'item' : 'items'}) — ₦{getCartTotal().toLocaleString()}
@@ -2023,19 +2081,30 @@ export default function ShopScreen() {
                   </Text>
                 </View>
 
+                                <View style={styles.cartTotalRow}>
+                  <Text style={styles.cartTotalLabel}>Subtotal:</Text>
+                  <Text style={styles.cartTotalValue}>
+                    ₦{getCartTotal().toLocaleString()}
+                  </Text>
+                </View>
+
                 <View style={styles.cartTotalRow}>
                   <Text style={styles.cartTotalLabel}>
-                    🚚 Delivery ({getDeliveryFeeEstimate().cartons} cartons):
+                    🚚 Delivery {cart.length > 0 ? '(Calculated)' : ''}:
                   </Text>
-                  <Text style={styles.cartTotalValue}>
-                    ₦{getDeliveryFeeEstimate().total.toLocaleString()}
-                  </Text>
+                  {loadingFee ? (
+                    <ActivityIndicator size="small" color={COLORS.primary} />
+                  ) : (
+                    <Text style={styles.cartTotalValue}>
+                      ₦{realDeliveryFee.toLocaleString()}
+                    </Text>
+                  )}
                 </View>
 
                 <View style={[styles.cartTotalRow, { marginTop: 4 }]}>
                   <Text style={[styles.cartTotalLabel, { fontWeight: '700' }]}>Grand Total:</Text>
                   <Text style={[styles.cartTotalValue, { fontSize: 24 }]}>
-                    ₦{(getCartTotal() + getDeliveryFeeEstimate().total).toLocaleString()}
+                    ₦{(getCartTotal() + realDeliveryFee).toLocaleString()}
                   </Text>
                 </View>
                 <TouchableOpacity
