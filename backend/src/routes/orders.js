@@ -25,6 +25,39 @@ function canSendPush(user) {
 }
 
 // ============================================================
+// ESTIMATE DELIVERY FEE - POST /api/orders/estimate-fee
+// ============================================================
+router.post('/estimate-fee', auth, async (req, res) => {
+    try {
+        const { shopId, distributorId, items } = req.body;
+
+        if (!shopId || !distributorId || !items) {
+            return res.status(400).json({ success: false, error: 'Missing required fields' });
+        }
+
+        const distributor = await Distributor.findById(distributorId);
+        const shop = await Shop.findById(shopId);
+
+        if (!distributor || !shop) {
+            return res.status(404).json({ success: false, error: 'Shop or Distributor not found' });
+        }
+
+        const { computeDeliveryFee } = require('../utils/deliveryFee');
+        const feeInfo = computeDeliveryFee(items, shop, distributor);
+
+        res.json({
+            success: true,
+            deliveryFee: feeInfo.total,
+            distanceKm: feeInfo.distanceKm,
+            usedFallback: feeInfo.usedFallback
+        });
+    } catch (error) {
+        console.error('Estimate fee error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
 // CREATE ORDER - POST /api/orders
 // ============================================================
 router.post('/', auth, async (req, res) => {
