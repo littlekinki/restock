@@ -1663,13 +1663,16 @@ export default function ShopScreen() {
             <View key={group.distributorId} style={styles.section}>
               <Text style={styles.sectionTitle}>🏪 {group.distributorName}</Text>
 
-              {group.products.map((product, idx) => {
+                            {group.products.map((product, idx) => {
                 const sizeDisplay = product.size ? ` • ${product.size}` : '';
                 const unitDisplay = product.unit ? ` / ${product.unit}` : '';
                 return (
-                  
+                  <View key={idx} style={styles.productRow}>
                     {product.image && (
-                      <Image source={{ uri: product.image }} style={{ width: 50, height: 50, borderRadius: 8, marginRight: 12 }} />
+                      <Image 
+                        source={{ uri: product.image }} 
+                        style={{ width: 50, height: 50, borderRadius: 8, marginRight: 12 }} 
+                      />
                     )}
                     <View style={{ flex: 1 }}>
                       <Text style={styles.productName}>
@@ -2485,7 +2488,7 @@ const COLORS = {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },
-  welcome: { fontSize: 18, fontWeight: '700', color: COLORS.primary, flex: 1, marginRight: 16, },
+  welcome: { fontSize: 18, fontWeight: '700', color: COLORS.primary, },
   logoutButton: { padding: 8 },
   logoutText: { fontSize: 24 },
   scrollView: { flex: 1 },
@@ -3299,7 +3302,7 @@ const styles = StyleSheet.create({
   },
   heroBellBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
     // Header actions
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0, },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4, },
   bellButton: { padding: 8, position: 'relative' },
   bellIcon: { fontSize: 22 },
   bellBadge: {
