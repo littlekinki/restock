@@ -506,6 +506,13 @@ async function loadAllShops() {
                             <span class="user-status ${shop.isActive ? 'active' : 'inactive'}">${shop.isActive ? 'Active' : 'Inactive'}</span>
                             <span class="user-stat">🛒 ${shop.totalOrders || 0} orders</span>
                             <span class="user-stat">💰 ₦${(shop.totalSpent || 0).toLocaleString()} spent</span>
+                            ${shop.address?.lat === 0 || !shop.address?.lat ? `
+                                <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; margin-top: 4px; background: #FFF3E0; color: #E65100;"
+                                    onclick="event.stopPropagation(); fixUserLocation('shop', '${shop._id}', this)">
+                                   📍 Fix Location
+                                </button>
+                            ` : ''}
+
                             <span class="expand-toggle">▼</span>
                         </div>
                     </div>
@@ -581,6 +588,12 @@ async function loadAllDistributors() {
                            <span class="user-stat">📦 ${dist.products?.length || 0} products</span>
                            <span class="user-stat">🛒 ${dist.totalOrders || 0} orders</span>
                            <span class="user-stat">💰 ₦${(dist.totalRevenue || 0).toLocaleString()}</span>
+                           ${dist.address?.lat === 0 || !dist.address?.lat ? `
+                               <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; margin-top: 4px; background: #FFF3E0; color: #E65100;"
+                                   onclick="event.stopPropagation(); fixUserLocation('distributor', '${dist._id}', this)">
+                                  📍 Fix Location
+                               </button>
+                           ` : ''}
                            <span class="expand-toggle">▼</span>
                        </div>
                    </div>
@@ -1394,6 +1407,37 @@ function toggleExpand(id) {
         body.classList.add('open');
         if (toggle) toggle.textContent = '▲';
         card.classList.add('expanded');
+    }
+}
+
+async function fixUserLocation(role, id, btnElement) {
+    const originalText = btnElement.textContent;
+    btnElement.textContent = '⏳...';
+    btnElement.disabled = true;
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/admin/fix-location/${role}/${id}`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast(`✅ Location fixed: ${data.lat.toFixed(4)}, ${data.lng.toFixed(4)}`);
+            btnElement.textContent = '✅ Fixed';
+            btnElement.style.backgroundColor = '#E8F5E9';
+            btnElement.style.color = '#1B5E20';
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to fix'));
+            btnElement.textContent = originalText;
+            btnElement.disabled = false;
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('❌ Network error');
+        btnElement.textContent = originalText;
+        btnElement.disabled = false;
     }
 }
 

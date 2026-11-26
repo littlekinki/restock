@@ -258,4 +258,56 @@ router.delete('/distributors/:id/products/:index', auth, adminOnly, async (req, 
   }
 });
 
+// ============================================================
+// FIX LOCATION FOR SHOP OR DISTRIBUTOR
+// PATCH /api/admin/fix-location/:role/:id
+// ============================================================
+router.patch('/fix-location/:role/:id', auth, adminOnly, async (req, res) => {
+    try {
+        const { role, id } = req.params;
+        let user;
+
+        if (role === 'shop') {
+            user = await Shop.findById(id);
+        } else if (role === 'distributor') {
+            user = await Distributor.findById(id);
+        } else {
+            return res.status(400).json({ success: false, error: 'Invalid role' });
+        }
+
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        const { street, city, state } = user.address || {};
+
+        if (!street && !city) {
+            return res.status(400).json({ success: false, error: 'No address on file to geocode' });
+        }
+
+        const { geocodeAddress } = require('../services/geocodeService');
+        const geo = await geocodeAddress(street, city, state);
+
+        if (!geo.success) {
+            return res.status(400).json({ success: false, error: 'Could not find coordinates for this address' });
+        }
+
+        user.address.lat = geo.lat;
+        user.address.lng = geo.lng;
+        await user.save();
+
+        console.log(`✅ Fixed location for ${role} ${user.businessName || user.fullName}: ${geo.lat}, ${geo.lng}`);
+
+        res.json({
+            success: true,
+            lat: geo.lat,
+            lng: geo.lng,
+            message: 'Location updated'
+        });
+    } catch (error) {
+        console.error('Fix location error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 module.exports = router;
