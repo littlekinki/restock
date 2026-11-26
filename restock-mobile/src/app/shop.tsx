@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Modal,
   Switch,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Rating } from '@kolking/react-native-rating';
@@ -1239,7 +1240,7 @@ export default function ShopScreen() {
             )}
           </TouchableOpacity>
           <Text style={styles.heroGreeting}>{getGreeting()},</Text>
-          <Text style={styles.heroShop}>{user?.name || 'Shop Owner'} 🏪</Text>
+          <Text style={styles.heroShop} numberOfLines={1}>{user?.name || 'Shop Owner'} 🏪</Text>
           <Text style={styles.heroTagline}>Ready to restock today?</Text>
           <TouchableOpacity
             style={styles.heroButton}
@@ -1666,7 +1667,7 @@ export default function ShopScreen() {
                 const sizeDisplay = product.size ? ` • ${product.size}` : '';
                 const unitDisplay = product.unit ? ` / ${product.unit}` : '';
                 return (
-                  <View key={idx} style={styles.productRow}>
+                  
                     {product.image && (
                       <Image source={{ uri: product.image }} style={{ width: 50, height: 50, borderRadius: 8, marginRight: 12 }} />
                     )}
@@ -1748,7 +1749,7 @@ export default function ShopScreen() {
           placeholder="Phone number" placeholderTextColor="#ADB5BD" keyboardType="phone-pad" />
         <Text style={styles.formLabel}>Email</Text>
         <TextInput style={styles.formInput} value={profile.email}
-          onChangeText={(text) => setProfile({ ...profile, email: text })}
+          onChangeText={(text) => setP<View key={idx} style={styles.productRow}>rofile({ ...profile, email: text })}
           placeholder="Email address" placeholderTextColor="#ADB5BD" keyboardType="email-address" />
         <Text style={styles.formLabel}>Street Address</Text>
         <TextInput style={styles.formInput} value={profile.street}
@@ -2484,7 +2485,7 @@ const COLORS = {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },
-  welcome: { fontSize: 18, fontWeight: '700', color: COLORS.primary },
+  welcome: { fontSize: 18, fontWeight: '700', color: COLORS.primary, flex: 1, marginRight: 16, },
   logoutButton: { padding: 8 },
   logoutText: { fontSize: 24 },
   scrollView: { flex: 1 },
@@ -2632,6 +2633,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 2,
     marginBottom: 12,
+    paddingRight: 40,
   },
   heroTagline: {
     color: 'rgba(255,255,255,0.85)',
@@ -3297,7 +3299,7 @@ const styles = StyleSheet.create({
   },
   heroBellBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
     // Header actions
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0, },
   bellButton: { padding: 8, position: 'relative' },
   bellIcon: { fontSize: 22 },
   bellBadge: {
