@@ -1752,9 +1752,8 @@ export default function ShopScreen() {
           placeholder="Phone number" placeholderTextColor="#ADB5BD" keyboardType="phone-pad" />
         <Text style={styles.formLabel}>Email</Text>
         <TextInput style={styles.formInput} value={profile.email}
-          onChangeText={(text) => setP<View key={idx} style={styles.productRow}>rofile({ ...profile, email: text })}
+          onChangeText={(text) => setProfile({ ...profile, email: text })}
           placeholder="Email address" placeholderTextColor="#ADB5BD" keyboardType="email-address" />
-        <Text style={styles.formLabel}>Street Address</Text>
         <TextInput style={styles.formInput} value={profile.street}
           onChangeText={(text) => setProfile({ ...profile, street: text })}
           placeholder="Street address" placeholderTextColor="#ADB5BD" />
