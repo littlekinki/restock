@@ -52,6 +52,7 @@ export default function DistributorScreen() {
 
   // Product form state
   const [showProductForm, setShowProductForm] = useState(false);
+  const [showProductList, setShowProductList] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: '',
     category: 'Noodles',
@@ -61,6 +62,8 @@ export default function DistributorScreen() {
     stock: '',
     image: null,
   });
+  const [editingProduct, setEditingProduct] = useState(null);
+  
 
   // Chat state
   const [showChat, setShowChat] = useState(false);
@@ -143,6 +146,22 @@ export default function DistributorScreen() {
     } catch (error) {
       console.error('Error loading products:', error);
     }
+  };
+
+
+  const openEditProduct = (product, index) => {
+    setEditingProduct({ ...product, originalIndex: index });
+    // Populate the form with existing product data
+    setNewProduct({
+      name: product.name,
+      category: product.category || 'Noodles',
+      price: String(product.price),
+      unit: product.unit || 'carton',
+      size: product.size || '',
+      stock: String(product.stock),
+      image: product.image || null,
+    });
+    setShowProductForm(true);
   };
 
   // ============================================================
@@ -799,6 +818,63 @@ export default function DistributorScreen() {
     );
   };
 
+  const saveEditProduct = async () => {
+    const { name, category, price, unit, size, stock, image } = newProduct;
+    
+    if (!name || !price || !stock) {
+      Alert.alert('⚠️ Missing Fields', 'Please fill in product name, price, and stock.');
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('user');
+      const currentUser = JSON.parse(userData);
+
+      const distResponse = await fetch(`${API_URL}/distributors`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const distData = await distResponse.json();
+      const distributor = distData.distributors.find(d => d._id === currentUser.id);
+
+      if (!distributor) return;
+
+      // Update the specific product in the array
+      const updatedProducts = [...distributor.products];
+      updatedProducts[editingProduct.originalIndex] = {
+        name,
+        category,
+        price: parseFloat(price),
+        unit,
+        size,
+        stock: parseInt(stock),
+        image: image || null,
+      };
+
+      const response = await fetch(`${API_URL}/distributors/${distributor._id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ products: updatedProducts })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('✅ Success', 'Product updated successfully!');
+        setShowProductForm(false);
+        setEditingProduct(null);
+        setNewProduct({ name: '', category: 'Noodles', price: '', unit: 'carton', size: '', stock: '', image: null });
+        loadProducts();
+      } else {
+        Alert.alert('❌ Error', data.error || 'Failed to update product');
+      }
+    } catch (error) {
+      Alert.alert('❌ Error', 'Could not update product');
+    }
+  };
+
   // ============================================================
   // OPEN CHAT (Distributor chats with Shop)
   // ============================================================
@@ -836,67 +912,60 @@ export default function DistributorScreen() {
   // ============================================================
   // SEND MESSAGE
   // ============================================================
-  const sendMessage = async () => {
-    if (!chatInput.trim() || !chatReceiver) return;
-    setSendingMessage(true);
-    try {
-      const token = await AsyncStorage.getItem('token');
-      const response = await fetch(`${API_URL}/chat/send`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          orderId: chatOrderId,
-          receiverId: chatReceiver.id,
-          receiverRole: chatReceiver.role,
-          message: chatInput.trim()
-        })
-      });
-      const data = await response.json();
-      if (data.success) {
-        setChatInput('');
-        await loadMessages(chatOrderId);
-      } else {
-        Alert.alert('❌ Error', data.error || 'Failed to send');
-      }
-    } catch (error) {
-      Alert.alert('❌ Error', 'Could not send message');
-    } finally {
-      setSendingMessage(false);
-    }
-  };
-
-  // ============================================================
-  // SHOW PRODUCTS
-  // ============================================================
   const showProducts = () => {
-    if (products.length === 0) {
-      Alert.alert(
-        '📦 No Products Yet',
-        'You haven\'t added any products. Would you like to add your first product?',
-        [
-          { text: 'Later', style: 'cancel' },
-          { text: '➕ Add Product', onPress: () => setShowProductForm(true) }
-        ]
-      );
-      return;
-    }
-
-    const productList = products.slice(0, 5).map((p, i) =>
-      `${i + 1}. ${p.name} - ₦${p.price?.toLocaleString()}\n   📦 ${p.stock} in stock`
-    ).join('\n\n');
-
-    Alert.alert(
-      '📦 Your Products',
-      `${productList}\n\n${products.length > 5 ? `...and ${products.length - 5} more` : ''}`,
-      [
-        { text: 'Close', style: 'cancel' },
-        { text: '➕ Add Product', onPress: () => setShowProductForm(true) }
-      ]
-    );
+    setShowProductList(true);
   };
+
+  // ============================================================
+  // RENDER PRODUCT LIST
+  // ============================================================
+  const renderProductList = () => (
+    <>
+      <TouchableOpacity style={styles.backButton} onPress={() => setShowProductList(false)}>
+        <Text style={styles.backButtonText}>← Back to Dashboard</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.title}>📦 My Products</Text>
+      <Text style={styles.subtitle}>Manage your inventory and prices.</Text>
+
+      <TouchableOpacity 
+        style={styles.saveButton} 
+        onPress={() => { 
+          setEditingProduct(null); 
+          setNewProduct({ name: '', category: 'Noodles', price: '', unit: 'carton', size: '', stock: '', image: null }); 
+          setShowProductForm(true); 
+        }}
+      >
+        <Text style={styles.saveButtonText}>➕ Add New Product</Text>
+      </TouchableOpacity>
+
+      {products.length === 0 ? (
+        <Text style={styles.emptyText}>No products yet. Add your first product above.</Text>
+      ) : (
+        products.map((product, index) => (
+          <View key={index} style={[styles.section, { flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 0 }]}>
+            {product.image ? (
+              <Image source={{ uri: product.image }} style={{ width: 50, height: 50, borderRadius: 8, marginRight: 12 }} />
+            ) : (
+              <View style={{ width: 50, height: 50, borderRadius: 8, backgroundColor: COLORS.lightGray, marginRight: 12, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 20 }}>📦</Text>
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.productName}>{product.name}</Text>
+              <Text style={styles.productStock}>₦{product.price?.toLocaleString()} • {product.stock} in stock</Text>
+            </View>
+            <TouchableOpacity style={styles.chatButton} onPress={() => openEditProduct(product, index)}>
+              <Text style={styles.chatButtonText}>✏️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelButton} onPress={() => deleteProduct(index)}>
+              <Text style={styles.cancelButtonText}>🗑️</Text>
+            </TouchableOpacity>
+          </View>
+        ))
+      )}
+    </>
+  );
 
   const showAnalytics = () => {
     const total = orders.length;
@@ -935,8 +1004,8 @@ export default function DistributorScreen() {
         <Text style={styles.backButtonText}>← Back</Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>➕ Add New Product</Text>
-      <Text style={styles.subtitle}>Fill in the details below.</Text>
+      <Text style={styles.title}>{editingProduct ? '✏️ Edit Product' : '➕ Add New Product'}</Text>
+      <Text style={styles.subtitle}>{editingProduct ? 'Update the details below.' : 'Fill in the details below.'}</Text>
 
       <View style={styles.formGroup}>
         <Text style={styles.formLabel}>Product Name *</Text>
@@ -1025,8 +1094,11 @@ export default function DistributorScreen() {
         />
       </View>
 
-      <TouchableOpacity style={styles.saveButton} onPress={saveNewProduct}>
-        <Text style={styles.saveButtonText}>✅ Add Product</Text>
+      <TouchableOpacity 
+        style={styles.saveButton} 
+        onPress={editingProduct ? saveEditProduct : saveNewProduct}
+      >
+        <Text style={styles.saveButtonText}>{editingProduct ? '✅ Save Changes' : '✅ Add Product'}</Text>
       </TouchableOpacity>
     </>
   );
@@ -1442,13 +1514,15 @@ export default function DistributorScreen() {
       >
         {showProductForm
           ? renderProductForm()
-          : activeTab === 'dashboard'
-            ? renderDashboard()
-            : renderSettings()
+          : showProductList
+            ? renderProductList()
+            : activeTab === 'dashboard'
+              ? renderDashboard()
+              : renderSettings()
         }
       </ScrollView>
 
-      {!showProductForm && (
+      {!showProductForm && !showProductList && (
         <View style={styles.tabBar}>
           <TouchableOpacity
             style={[styles.tabItem, activeTab === 'dashboard' && styles.tabItemActive]}
