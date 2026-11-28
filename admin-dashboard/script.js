@@ -1357,31 +1357,61 @@ async function adminDeleteProduct(index) {
 async function adminEditProduct(index) {
     if (!currentDistributorId) return;
 
-    const newName = prompt('Product name:');
+    // Get the current product details from the UI
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_URL}/admin/distributors/${currentDistributorId}/products`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    const product = data.products[index];
+
+    // Prompt for the new details (pre-filled with current data)
+    const newName = prompt('Product name:', product.name);
     if (newName === null) return;
 
-    const newPrice = prompt('Price (₦):');
+    const newCategory = prompt('Category:', product.category);
+    if (newCategory === null) return;
+
+    const newPrice = prompt('Price (₦):', product.price);
     if (newPrice === null) return;
 
-    const newStock = prompt('Stock:');
+    const newSize = prompt('Size:', product.size);
+    if (newSize === null) return;
+
+    const newStock = prompt('Stock:', product.stock);
     if (newStock === null) return;
 
+    const newImageUrl = prompt('Paste Image URL (or leave blank to keep current):', product.image ? 'Image already set' : '');
+    if (newImageUrl === null) return;
+
+    // If they didn't change the image, keep the old one
+    let finalImage = product.image;
+    if (newImageUrl && newImageUrl !== 'Image already set') {
+        finalImage = newImageUrl;
+    }
+
     try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_URL}/admin/distributors/${currentDistributorId}/products/${index}`, {
+        const updateRes = await fetch(`${API_URL}/admin/distributors/${currentDistributorId}/products/${index}`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ name: newName, price: newPrice, stock: newStock })
+            body: JSON.stringify({
+                name: newName,
+                category: newCategory,
+                price: newPrice,
+                size: newSize,
+                stock: newStock,
+                image: finalImage
+            })
         });
-        const data = await res.json();
-        if (data.success) {
-            showToast('✅ Updated');
-            renderDistributorProducts(data.products || []);
+        const updateData = await updateRes.json();
+        if (updateData.success) {
+            showToast('✅ Product updated');
+            renderDistributorProducts(updateData.products || []);
         } else {
-            showToast('❌ ' + (data.error || 'Failed'));
+            showToast('❌ ' + (updateData.error || 'Failed'));
         }
     } catch (e) {
         console.error(e);

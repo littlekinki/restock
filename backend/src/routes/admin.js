@@ -210,6 +210,7 @@ router.put('/distributors/:id/products/:index', auth, adminOnly, async (req, res
       unit: unit || distributor.products[index].unit,
       size: size !== undefined ? size : distributor.products[index].size,
       stock: Number(stock !== undefined ? stock : distributor.products[index].stock),
+      image: req.body.image !== undefined ? req.body.image : distributor.products[index].image,
     };
 
     await distributor.save();
