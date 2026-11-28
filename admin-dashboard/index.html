@@ -170,7 +170,7 @@
                             <input type="text" id="apName" placeholder="e.g., Indomie Super Pack"
                                 style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius); margin-top: 4px;" />
                         </div>
-                        
+
                         <div style="grid-column: span 2;">
                             <label style="font-size: 13px; font-weight: 600;">Product Image</label>
                             <input type="file" id="apImage" accept="image/*"
@@ -219,6 +219,61 @@
 
                     <div style="margin-top: 16px; text-align: right;">
                         <button class="btn btn-primary" onclick="adminAddProduct()">💾 Save Product</button>
+                    </div>
+                </div>
+
+                <!-- Edit Product Form -->
+                <div id="editProductFormWrap" style="display: none; background: #FFF3E0; padding: 20px; border-radius: var(--radius); border: 1px solid #FFB74D; margin-bottom: 20px;">
+                    <h3 style="font-size: 16px; margin-bottom: 16px;">✏️ Edit Product</h3>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label style="font-size: 13px; font-weight: 600;">Product Name *</label>
+                            <input type="text" id="epName" style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius); margin-top: 4px;" />
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; font-weight: 600;">Category</label>
+                            <select id="epCategory" style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius); margin-top: 4px;">
+                                <option value="Noodles">Noodles</option>
+                                <option value="Beverages">Beverages</option>
+                                <option value="Food">Food</option>
+                                <option value="Snacks">Snacks</option>
+                                <option value="Detergents">Detergents</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; font-weight: 600;">Price (₦) *</label>
+                            <input type="number" id="epPrice" style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius); margin-top: 4px;" />
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; font-weight: 600;">Unit</label>
+                            <select id="epUnit" style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius); margin-top: 4px;">
+                                <option value="carton">Carton</option>
+                                <option value="pack">Pack</option>
+                                <option value="piece">Piece</option>
+                                <option value="kg">Kg</option>
+                                <option value="litre">Litre</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; font-weight: 600;">Size</label>
+                            <input type="text" id="epSize" style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius); margin-top: 4px;" />
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; font-weight: 600;">Stock *</label>
+                            <input type="number" id="epStock" style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius); margin-top: 4px;" />
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label style="font-size: 13px; font-weight: 600;">Product Image (Leave blank to keep current)</label>
+                            <input type="file" id="epImage" accept="image/*" style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius); margin-top: 4px;" />
+                            <div id="epCurrentImage" style="margin-top: 8px;"></div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 16px; text-align: right; display: flex; gap: 8px; justify-content: flex-end;">
+                        <button class="btn btn-secondary" onclick="cancelEditProduct()">Cancel</button>
+                        <button class="btn btn-primary" onclick="saveEditedProduct()">💾 Save Changes</button>
                     </div>
                 </div>
 

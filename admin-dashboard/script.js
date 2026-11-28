@@ -1259,159 +1259,101 @@ function renderDistributorProducts(products) {
     `;
 }
 
-async function adminAddProduct() {
-    if (!currentDistributorId) {
-        showToast('⚠️ Select a distributor first');
-        return;
-    }
+let editingProductIndex = null;
 
-    const name = document.getElementById('apName').value.trim();
-    const category = document.getElementById('apCategory').value;
-    const price = document.getElementById('apPrice').value;
-    const unit = document.getElementById('apUnit').value;
-    const size = document.getElementById('apSize').value.trim();
-    const stock = document.getElementById('apStock').value;
-    const imageFile = document.getElementById('apImage').files[0];
+async function adminEditProduct(index) {
+    if (!currentDistributorId) return;
+    
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/admin/distributors/${currentDistributorId}/products`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!data.success || !data.products[index]) return;
+
+        const product = data.products[index];
+        editingProductIndex = index;
+
+        // Populate the form
+        document.getElementById('epName').value = product.name || '';
+        document.getElementById('epCategory').value = product.category || 'Noodles';
+        document.getElementById('epPrice').value = product.price || '';
+        document.getElementById('epUnit').value = product.unit || 'carton';
+        document.getElementById('epSize').value = product.size || '';
+        document.getElementById('epStock').value = product.stock || '';
+        document.getElementById('epImage').value = ''; // Reset file input
+
+        // Show current image preview
+        const imgWrap = document.getElementById('epCurrentImage');
+        if (product.image) {
+            imgWrap.innerHTML = `<img src="${product.image}" style="height: 60px; border-radius: 8px;" />`;
+        } else {
+            imgWrap.innerHTML = '<span style="font-size: 12px; color: #6C757D;">No image currently</span>';
+        }
+
+        document.getElementById('editProductFormWrap').style.display = 'block';
+        document.getElementById('editProductFormWrap').scrollIntoView({ behavior: 'smooth' });
+    } catch (e) {
+        console.error(e);
+        showToast('❌ Error loading product');
+    }
+}
+
+function cancelEditProduct() {
+    document.getElementById('editProductFormWrap').style.display = 'none';
+    editingProductIndex = null;
+}
+
+async function saveEditedProduct() {
+    if (!currentDistributorId || editingProductIndex === null) return;
+
+    const name = document.getElementById('epName').value.trim();
+    const category = document.getElementById('epCategory').value;
+    const price = document.getElementById('epPrice').value;
+    const unit = document.getElementById('epUnit').value;
+    const size = document.getElementById('epSize').value.trim();
+    const stock = document.getElementById('epStock').value;
+    const imageFile = document.getElementById('epImage').files[0];
 
     if (!name || !price || stock === '') {
         showToast('⚠️ Fill in name, price, and stock');
         return;
     }
 
-    
-    const getBase64 = (file) => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error);
-        });
-    };
-
-    try {
-        let base64Image = null;
-        if (imageFile) {
-            base64Image = await getBase64(imageFile);
-        }
-
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_URL}/admin/distributors/${currentDistributorId}/products`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ 
-                name, 
-                category, 
-                price, 
-                unit, 
-                size, 
-                stock,
-                image: base64Image 
-            })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-            showToast('✅ Product added');
-            // clear form
-            document.getElementById('apName').value = '';
-            document.getElementById('apPrice').value = '';
-            document.getElementById('apSize').value = '';
-            document.getElementById('apStock').value = '';
-            document.getElementById('apImage').value = ''; // Clear image input
-            renderDistributorProducts(data.products || []);
-        } else {
-            showToast('❌ ' + (data.error || 'Failed'));
-        }
-    } catch (e) {
-        console.error(e);
-        showToast('❌ Network error');
-    }
-}
-
-async function adminDeleteProduct(index) {
-    if (!currentDistributorId) return;
-    if (!confirm('Delete this product?')) return;
-
-    try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_URL}/admin/distributors/${currentDistributorId}/products/${index}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.success) {
-            showToast('✅ Deleted');
-            renderDistributorProducts(data.products || []);
-        } else {
-            showToast('❌ ' + (data.error || 'Failed'));
-        }
-    } catch (e) {
-        console.error(e);
-        showToast('❌ Network error');
-    }
-}
-
-async function adminEditProduct(index) {
-    if (!currentDistributorId) return;
-
-    // Get the current product details from the UI
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/admin/distributors/${currentDistributorId}/products`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+    const getBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
     });
-    const data = await res.json();
-    const product = data.products[index];
-
-    // Prompt for the new details (pre-filled with current data)
-    const newName = prompt('Product name:', product.name);
-    if (newName === null) return;
-
-    const newCategory = prompt('Category:', product.category);
-    if (newCategory === null) return;
-
-    const newPrice = prompt('Price (₦):', product.price);
-    if (newPrice === null) return;
-
-    const newSize = prompt('Size:', product.size);
-    if (newSize === null) return;
-
-    const newStock = prompt('Stock:', product.stock);
-    if (newStock === null) return;
-
-    const newImageUrl = prompt('Paste Image URL (or leave blank to keep current):', product.image ? 'Image already set' : '');
-    if (newImageUrl === null) return;
-
-    // If they didn't change the image, keep the old one
-    let finalImage = product.image;
-    if (newImageUrl && newImageUrl !== 'Image already set') {
-        finalImage = newImageUrl;
-    }
 
     try {
-        const updateRes = await fetch(`${API_URL}/admin/distributors/${currentDistributorId}/products/${index}`, {
+        let base64Image = undefined; // Undefined means "don't change the image"
+        if (imageFile) {
+            base64Image = await getBase64(imageFile); // If a new file is chosen, use it
+        }
+
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/admin/distributors/${currentDistributorId}/products/${editingProductIndex}`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                name: newName,
-                category: newCategory,
-                price: newPrice,
-                size: newSize,
-                stock: newStock,
-                image: finalImage
+                name, category, price, unit, size, stock,
+                image: base64Image // If undefined, backend keeps the old image
             })
         });
-        const updateData = await updateRes.json();
-        if (updateData.success) {
+
+        const data = await res.json();
+        if (data.success) {
             showToast('✅ Product updated');
-            renderDistributorProducts(updateData.products || []);
+            cancelEditProduct();
+            renderDistributorProducts(data.products || []);
         } else {
-            showToast('❌ ' + (updateData.error || 'Failed'));
+            showToast('❌ ' + (data.error || 'Failed'));
         }
     } catch (e) {
         console.error(e);

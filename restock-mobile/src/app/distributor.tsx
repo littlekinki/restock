@@ -703,6 +703,8 @@ export default function DistributorScreen() {
       base64: true, // Convert to Base64 string
     });
 
+    console.log('📷 Picker result:', result);
+
     if (!result.canceled) {
       // Save the base64 string to state
       const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
